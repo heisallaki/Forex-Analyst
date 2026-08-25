@@ -1,11 +1,15 @@
 import asyncio
-import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, get_current_user_from_token, require_admin, require_permission
+from app.api.deps import (
+    get_current_user_from_token,
+    get_db_session,
+    require_admin,
+    require_permission,
+)
 from app.application.dto.market_dto import (
     BackfillRequest,
     BackfillResponse,
@@ -61,7 +65,10 @@ async def backfill(
 
 
 @router.websocket("/ws/prices")
-async def prices_websocket(websocket: WebSocket, session: Annotated[AsyncSession, Depends(get_db_session)]) -> None:
+async def prices_websocket(
+    websocket: WebSocket,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> None:
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=4401)
