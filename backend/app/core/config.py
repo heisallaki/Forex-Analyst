@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    REDIS_URL: str = "redis://localhost:6379/0"
+    TWELVE_DATA_API_KEY: str
+    TWELVE_DATA_REST_URL: str = "https://api.twelvedata.com"
+    TWELVE_DATA_WS_URL: str = "wss://ws.twelvedata.com/v1/quotes/price"
+    MARKET_INSTRUMENTS: list[str] = ["EUR/USD", "GBP/USD", "USD/JPY", "XAU/USD"]
 
 
 settings = Settings()

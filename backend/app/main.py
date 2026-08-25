@@ -1,14 +1,31 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.market import router as market_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.infrastructure.market_data.twelve_data_stream import run_market_stream
 
 configure_logging(settings.APP_DEBUG)
 
-app = FastAPI(title=settings.APP_NAME, debug=settings.APP_DEBUG)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    stream_task = asyncio.create_task(run_market_stream())
+    yield
+    stream_task.cancel()
+    try:
+        await stream_task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title=settings.APP_NAME, debug=settings.APP_DEBUG, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,3 +37,4 @@ app.add_middleware(
 
 app.include_router(health_router, prefix=settings.API_PREFIX)
 app.include_router(auth_router, prefix=settings.API_PREFIX)
+app.include_router(market_router, prefix=settings.API_PREFIX)

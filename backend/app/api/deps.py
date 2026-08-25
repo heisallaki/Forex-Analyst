@@ -60,3 +60,31 @@ def require_permission(permission: str):
         return current_user
 
     return checker
+
+
+def require_admin():
+    async def checker(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+        if current_user.role != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+        return current_user
+
+    return checker
+
+
+async def get_current_user_from_token(
+    token: str, repository: SqlAlchemyUserRepository
+) -> User | None:
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "access":
+            return None
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+
+    user = await repository.get_by_id(UUID(user_id))
+    if user is None or not user.is_active:
+        return None
+    return user
