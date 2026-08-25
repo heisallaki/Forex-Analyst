@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.domain.entities.market import Candle
+from app.domain.entities.market import Candle, Tick
 
 
 class MarketRepository(ABC):
@@ -10,4 +10,8 @@ class MarketRepository(ABC):
 
     @abstractmethod
     async def upsert_candles(self, candles: list[Candle]) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def store_tick(self, tick: Tick) -> None:
         raise NotImplementedError

@@ -2,9 +2,10 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.market import Candle
+from app.domain.entities.market import Candle, Tick
 from app.domain.repositories.market_repository import MarketRepository
 from app.infrastructure.database.models.candle_model import CandleModel
+from app.infrastructure.database.models.tick_model import TickModel
 
 
 def _to_entity(model: CandleModel) -> Candle:
@@ -64,3 +65,8 @@ class SqlAlchemyMarketRepository(MarketRepository):
         await self.session.execute(stmt)
         await self.session.commit()
         return len(values)
+
+    async def store_tick(self, tick: Tick) -> None:
+        model = TickModel(symbol=tick.symbol, price=tick.price, timestamp=tick.timestamp)
+        self.session.add(model)
+        await self.session.commit()

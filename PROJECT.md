@@ -6,13 +6,13 @@ Purpose: AI-powered forex and gold market analysis platform providing explainabl
 
 Goals: Live market monitoring, feature engineering, multi-model AI decision engine, backtesting, paper trading, future execution support.
 
-Current version: 0.3.0
+Current version: 0.4.0
 
-Current development phase: Phase 3 - Market Data Engine
+Current development phase: Phase 4 - Database Layer
 
 Overall architecture: Clean Architecture monorepo. Backend: FastAPI (presentation/application/domain/infrastructure). Frontend: React 19 + TypeScript, feature-sliced design.
 
-Current completion percentage: 25%
+Current completion percentage: 32%
 
 ---
 
@@ -20,13 +20,13 @@ Current completion percentage: 25%
 
 Frontend: React 19, TypeScript, Vite, MUI, React Router, React Hook Form, Zod, Zustand (FREE, OSS)
 
-Backend: Python, FastAPI, Uvicorn, Pydantic Settings, SQLAlchemy 2.0, Alembic, pwdlib[argon2], python-jose, httpx, websockets, redis-py (FREE, OSS)
+Backend: Python, FastAPI, Uvicorn, Pydantic Settings, SQLAlchemy 2.0, Alembic, pwdlib[argon2], python-jose, httpx, websockets, redis-py, certifi (FREE, OSS)
 
-Database: PostgreSQL 16, local via Homebrew (FREE, OSS)
+Database: PostgreSQL 16 + TimescaleDB (Apache-2.0 build), local via Homebrew (FREE, OSS)
 
-Cache/Messaging: Redis 7, local via Homebrew (FREE, OSS)
+Cache/Messaging: Redis 7.2.16, self-built from source, run manually via `src/redis-server` (FREE, OSS)
 
-Market Data: Twelve Data (FREE TIER — 800 calls/day, 8/min, WebSocket testable on free plan)
+Market Data: Twelve Data (FREE TIER — 800 calls/day, 8/min)
 
 AI: Not yet implemented
 
@@ -42,28 +42,28 @@ No paid dependency has been introduced.
 ✅ Module 1: Project Initialization & Repository Setup
 ✅ Module 2: Authentication & Authorization
 ✅ Module 3: Market Data Engine
+✅ Module 4: Database Layer
 
 ---
 
 # Current Module
 
-Module 3: Market Data Engine
+Module 4: Database Layer
 
-Purpose: Live streaming prices and historical candle storage for forex majors + XAU/USD.
+Purpose: TimescaleDB hypertables for time-series data, tick-level persistence, foundational schema for later phases.
 
-Completed features: Single shared upstream WebSocket to Twelve Data, Redis pub/sub fan-out, authenticated frontend WebSocket, REST candle retrieval with auto-backfill, admin-only manual backfill, pure-calculation market session detection, Markets page with live ticker.
+Completed features: `candles` converted to a hypertable (existing data preserved), new `ticks` hypertable with live ingestion wired into the Module 3 stream worker, six new foundational tables (`strategies`, `signals`, `trades`, `ai_predictions`, `logs`, `metrics`).
 
-Files created/modified: See Module 3 file lists above.
+Files created/modified: See Module 4 file lists above.
 
-Dependencies added: httpx, websockets, redis (Python client), Redis (Homebrew service).
+Dependencies added: TimescaleDB (Apache-2.0 build) via Homebrew, extending existing PostgreSQL 16.
 
-Installation requirements: Redis 7 (Homebrew), free Twelve Data API key.
+Installation requirements: `brew tap timescale/tap`, `brew install timescaledb --with-oss-only`.
 
 ---
 
 # Pending Modules
 
-Phase 4: Database Layer (TimescaleDB hypertables, ticks, signals, trades, strategies, AI predictions, logs, metrics)
 Phase 5: Feature Engineering
 Phase 6: Backtesting Engine
 Phase 7: AI Engine
@@ -78,38 +78,54 @@ Phase 11: Dashboard
 
 **users, refresh_tokens** — see Module 2.
 
-**candles**
-- id (UUID, PK)
-- symbol (String, indexed)
-- interval (String, indexed)
-- open, high, low, close (Float)
-- volume (Float, nullable)
-- timestamp (DateTime, indexed)
-- unique constraint on (symbol, interval, timestamp)
+**candles** (hypertable, partitioned on `timestamp`)
+- id, timestamp (composite PK)
+- symbol, interval (indexed)
+- open, high, low, close, volume
+- unique constraint (symbol, interval, timestamp)
 
-Migration: `backend/alembic/versions/0002_create_candles.py`
+**ticks** (hypertable, partitioned on `timestamp`)
+- id, timestamp (composite PK)
+- symbol (indexed)
+- price
 
-Note: stored as a plain PostgreSQL table for now. Phase 4 converts this into a TimescaleDB hypertable and adds tick-level storage.
+**strategies**
+- id (PK), name (unique), description, parameters (JSONB), is_active, created_at, updated_at
+- Populated starting Phase 6.
+
+**signals**
+- id (PK), strategy_id (FK → strategies, nullable), symbol, direction, confidence, reasoning (JSONB), created_at
+- Populated starting Phase 8 (Decision Engine). `reasoning` JSONB is structured to hold trend, supporting indicators, risk level, expected reward, alternative scenarios, and invalidation conditions per the project's AI explainability requirements.
+
+**trades**
+- id (PK), signal_id (FK → signals, nullable), symbol, side, entry_price, exit_price, quantity, status, is_paper, pnl, opened_at, closed_at
+- Populated starting Phase 9 (Paper Trading). `is_paper` distinguishes simulated trades from any future live execution.
+
+**ai_predictions**
+- id (PK), model_name, symbol, prediction_type, output (JSONB), created_at
+- Populated starting Phase 7 (AI Engine).
+
+**logs**
+- id (PK), level, source, message, context (JSONB), created_at
+- Structured audit trail; population deferred to a future logging-pipeline enhancement.
+
+**metrics**
+- id (PK), name, value, tags (JSONB), recorded_at
+- Populated starting Phase 6 (Backtesting) for performance statistics.
+
+Migration: `backend/alembic/versions/0003_timescaledb_and_schema.py`
 
 ---
 
 # API Endpoints
 
-GET /api/v1/health - health check - no auth
-POST /api/v1/auth/register, /login, /refresh, /logout, GET /me - see Module 2
-GET /api/v1/market/status - configured instruments + active sessions - requires view_markets permission
-GET /api/v1/market/candles/{symbol} - historical candles, auto-backfills if empty - requires view_markets permission
-POST /api/v1/market/backfill - manual candle backfill - admin only
-WS /api/v1/market/ws/prices?token=<access_token> - live tick stream - requires view_markets permission
+Unchanged from Module 3 — this module added no new endpoints.
 
 ---
 
 # WebSocket Events
 
-`/market/ws/prices` streams raw Twelve Data price events, e.g.:
-```json
-{"event": "price", "symbol": "EUR/USD", "price": "1.08421", "timestamp": 1732450000}
-```
+Unchanged from Module 3.
 
 ---
 
@@ -127,21 +143,13 @@ None yet.
 
 # Environment Variables
 
-Backend (.env): all Module 2 variables, plus:
-REDIS_URL - required
-TWELVE_DATA_API_KEY - required, free key from twelvedata.com
-TWELVE_DATA_REST_URL, TWELVE_DATA_WS_URL - required, have working defaults
-MARKET_INSTRUMENTS - required, JSON array, defaults to 4 symbols to respect free-tier limits
-
-Frontend (.env):
-VITE_API_BASE_URL - required
-VITE_WS_BASE_URL - required
+Unchanged from Module 3.
 
 ---
 
 # Configuration Files
 
-Unchanged from Module 2, plus new modules under `infrastructure/market_data` and `infrastructure/cache`.
+Unchanged from Module 3.
 
 ---
 
@@ -159,13 +167,13 @@ No Docker commands are used.
 Unit tests: Not yet added
 Integration tests: Not yet added
 Coverage: 0%
-Pending tests: market session calculation, candle upsert idempotency, WebSocket auth rejection paths
+Pending tests: hypertable migration idempotency, tick persistence failure handling
 
 ---
 
 # Local Development
 
-See Local Testing & Running section above.
+See Local Testing & Running section above. Redis is started manually via `src/redis-server` from a self-built Redis 7.2.16 — not a Homebrew service.
 
 ---
 
@@ -180,42 +188,40 @@ Production readiness: Not production ready
 
 # Security
 
-Authentication/Authorization: unchanged from Module 2, extended with `require_admin` and WebSocket token validation.
-Secrets: TWELVE_DATA_API_KEY and REDIS_URL added to .env, git-ignored.
-Rate limiting: Twelve Data's own free-tier limits are the current backstop; no additional throttling implemented yet on our own endpoints.
+Unchanged from Module 3. No new attack surface introduced in this module.
 
 ---
 
 # Performance
 
-Redis pub/sub fan-out keeps upstream provider connections to exactly one regardless of frontend client count. Candle upserts are single-statement conflict-resolved writes.
+Hypertables keep time-range queries on `candles`/`ticks` performant as data grows. Tick persistence is fire-and-forget per tick via `asyncio.create_task`; batching is noted as technical debt below if volume grows.
 
 ---
 
 # Known Issues
 
-Market session detection does not account for Daylight Saving Time shifts — session windows are fixed UTC hours. This is accurate most of the year but drifts by an hour during DST transition periods for London/New York.
+Market session detection does not account for Daylight Saving Time (unchanged from Module 3).
 
 ---
 
 # Technical Debt
 
-- Candle price columns use Float rather than Numeric/Decimal; acceptable for display purposes now, should move to fixed-point before this data feeds real position sizing.
-- Rate limiting on our own auth/market endpoints deferred to a later hardening pass.
-- Tick-level (not just candle) historical storage deferred to Phase 4.
+- Tick persistence opens one DB session per tick; acceptable at current Twelve Data free-tier update frequency, should move to a buffered/batched writer if instrument count or update frequency grows.
+- Candle/tick price columns remain Float, not Numeric/Decimal (unchanged from Module 3).
+- `logs` table exists but nothing writes to it yet — current logging is stdout-only; a DB-backed logging handler is a future improvement, not required for now.
 
 ---
 
 # Future Improvements
 
-Economic calendar and news feed integration — deferred pending a proper free-tier provider evaluation (see Module 3 Free/Open-Source Validation). DST-aware session calculation.
+Economic calendar / news integration (deferred from Module 3). DST-aware session calculation. Batched tick writes.
 
 ---
 
 # Next Module
 
-Module: Phase 4 - Database Layer
+Module: Phase 5 - Feature Engineering
 
-Objectives: Convert `candles` into a TimescaleDB hypertable, add tick-level storage, and create the schema foundation for signals, trades, strategies, AI predictions, logs, and metrics tables ahead of the feature engineering and backtesting modules.
+Objectives: Compute EMA, SMA, VWAP, ATR, RSI, MACD, ADX, Bollinger Bands, liquidity sweeps, market structure, swing highs/lows, order blocks, Fair Value Gaps, volatility, trend strength, momentum, and session labels from the candle data now stored in TimescaleDB.
 
-Expected deliverables: TimescaleDB extension setup (Homebrew tap), hypertable migration, new domain entities and repositories for the additional tables, updated PROJECT.md schema section.
+Expected deliverables: A feature engineering service reading from `candles`, computed feature storage or on-demand calculation strategy, and the domain/application layers backing it.
