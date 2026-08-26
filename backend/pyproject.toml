@@ -18,7 +18,11 @@ dependencies = [
     "redis>=5.0.0",
     "certifi>=2024.7.4",
     "pandas>=2.2.0",
-    "numpy>=2.5.2"
+    "numpy>=2.0.0",
+    "scikit-learn>=1.5.0",
+    "xgboost>=2.1.0",
+    "lightgbm>=4.5.0",
+    "joblib>=1.4.0"
 ]
 
 [tool.ruff]

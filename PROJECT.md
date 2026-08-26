@@ -6,13 +6,13 @@ Purpose: AI-powered forex and gold market analysis platform providing explainabl
 
 Goals: Live market monitoring, feature engineering, multi-model AI decision engine, backtesting, paper trading, future execution support.
 
-Current version: 0.6.0
+Current version: 0.7.0
 
-Current development phase: Phase 6 - Backtesting Engine
+Current development phase: Phase 7 - AI Engine
 
 Overall architecture: Clean Architecture monorepo. Backend: FastAPI (presentation/application/domain/infrastructure). Frontend: React 19 + TypeScript, feature-sliced design.
 
-Current completion percentage: 48%
+Current completion percentage: 58%
 
 ---
 
@@ -20,7 +20,7 @@ Current completion percentage: 48%
 
 Frontend: React 19, TypeScript, Vite, MUI, React Router, React Hook Form, Zod, Zustand (FREE, OSS)
 
-Backend: Python, FastAPI, Uvicorn, Pydantic Settings, SQLAlchemy 2.0, Alembic, pwdlib[argon2], python-jose, httpx, websockets, redis-py, certifi, pandas, numpy (FREE, OSS)
+Backend: Python, FastAPI, Uvicorn, Pydantic Settings, SQLAlchemy 2.0, Alembic, pwdlib[argon2], python-jose, httpx, websockets, redis-py, certifi, pandas, numpy, scikit-learn, XGBoost, LightGBM, joblib (FREE, OSS)
 
 Database: PostgreSQL 16 + TimescaleDB (Apache-2.0 build), local via Homebrew (FREE, OSS)
 
@@ -28,7 +28,7 @@ Cache/Messaging: Redis 7.2.16, self-built, run via `src/redis-server` (FREE, OSS
 
 Market Data: Twelve Data (FREE TIER)
 
-AI: Not yet implemented (rule-based backtesting only in this phase)
+AI: scikit-learn, XGBoost, LightGBM — six local models trained per symbol/interval, no external AI API (FREE, OSS). PyTorch and Stable-Baselines3 deliberately deferred (see Module 7 Free/Open-Source Validation).
 
 Infrastructure: GitHub, GitHub Actions (FREE TIER)
 
@@ -45,28 +45,28 @@ No paid dependency has been introduced.
 ✅ Module 4: Database Layer
 ✅ Module 5: Feature Engineering
 ✅ Module 6: Backtesting Engine
+✅ Module 7: AI Engine
 
 ---
 
 # Current Module
 
-Module 6: Backtesting Engine
+Module 7: AI Engine
 
-Purpose: Simulate rule-based strategies against historical data with realistic execution costs, and compute full performance statistics.
+Purpose: Train and serve six specialized local models (trend, entry quality, confidence, risk, reward, market regime), populating `ai_predictions`.
 
-Completed features: `POST /api/v1/backtest/run` — multi-interval backtest execution with ATR-based stops/targets, risk-based position sizing, spread/slippage/commission modeling, and win rate / profit factor / Sharpe / Sortino / max drawdown / average R-multiple / monthly performance statistics. Populates `strategies`, `signals`, `trades`, `metrics`.
+Completed features: `POST /api/v1/ai/train` (admin only) trains and versions all six models per symbol/interval; `GET /api/v1/ai/predict/{symbol}` returns raw predictions from the latest trained models and persists them.
 
-Files created/modified: See Module 6 file lists above.
+Files created/modified: See Module 7 file lists above.
 
-Dependencies added: None (standard library only).
+Dependencies added: scikit-learn, xgboost, lightgbm, joblib; libomp (Homebrew, macOS OpenMP runtime).
 
-Installation requirements: None beyond what already exists.
+Installation requirements: `brew install libomp` before `pip install xgboost lightgbm`.
 
 ---
 
 # Pending Modules
 
-Phase 7: AI Engine
 Phase 8: Decision Engine
 Phase 9: Paper Trading
 Phase 10: Execution Engine (disabled by default)
@@ -76,20 +76,15 @@ Phase 11: Dashboard
 
 # Database Schema
 
-Unchanged from Module 4 — this module is the first to actually write into `strategies`, `signals`, `trades`, and `metrics`.
-
-**Backtest write pattern:**
-- One `strategies` row per unique `strategy_name` (created once; re-running with the same name does not currently update `parameters` — see Technical Debt).
-- One `signals` row per simulated trade, `reasoning` JSONB capturing the matched rule side and the feature snapshot at entry.
-- One `trades` row per simulated trade, `signal_id` linking back, `is_paper = true`.
-- Several `metrics` rows per backtest run (`win_rate`, `profit_factor`, `sharpe_ratio`, `sortino_ratio`, `max_drawdown_pct`, `average_r_multiple`, `final_equity`), tagged with `{strategy, symbol, interval}`.
+Unchanged from Module 4 — this module is the first to write into `ai_predictions`. Each `/ai/predict` call writes six rows (`prediction_type`: trend, entry_quality, confidence, risk, reward, regime), each with a structured `output` JSONB.
 
 ---
 
 # API Endpoints
 
-Unchanged from Module 5, plus:
-POST /api/v1/backtest/run - run a backtest across one or more intervals - requires manage_strategies permission
+Unchanged from Module 6, plus:
+POST /api/v1/ai/train - train all six models for a symbol/interval - admin only
+GET /api/v1/ai/predict/{symbol} - raw model predictions (not recommendations) for the latest bar - requires view_markets permission
 
 ---
 
@@ -101,19 +96,32 @@ Unchanged from Module 3.
 
 # AI Models
 
-None yet — strategies in this module are rule-based, not learned.
+**Trend Classification** (XGBoost, multiclass) — Inputs: 14 ATR-normalized technical features. Outputs: predicted trend (up/down/flat) with per-class probability. Training status: trained on demand via `/ai/train`. Evaluation: accuracy, macro F1.
+
+**Entry Quality** (LightGBM, binary) — Inputs: same 14 features. Outputs: probability the current bar precedes a tradeable move (direction-agnostic). Evaluation: accuracy, ROC-AUC.
+
+**Confidence Scoring** (Logistic Regression, binary) — Inputs: same 14 features. Outputs: probability a long-direction trade from this bar hits its ATR-based target before its stop. Evaluation: accuracy, ROC-AUC.
+
+**Risk Prediction** (Gradient Boosting Regressor) — Inputs: same 14 features. Outputs: predicted maximum adverse excursion, in ATR units, over the training horizon. Evaluation: mean absolute error.
+
+**Reward Prediction** (Gradient Boosting Regressor) — Inputs: same 14 features. Outputs: predicted maximum favorable excursion, in ATR units. Evaluation: mean absolute error.
+
+**Market Regime Classification** (KMeans clustering → Random Forest classifier) — Inputs: ADX, volatility, Bollinger bandwidth. Outputs: trending / ranging / volatile. Evaluation: accuracy against cluster-derived labels.
+
+All six are trained per symbol/interval combination and versioned locally under `backend/models/`.
 
 ---
 
 # Feature Engineering
 
-Unchanged from Module 5, with `FeatureRow` extended to include `open`/`high`/`low` (needed for realistic next-bar-open execution in the backtest engine).
+Unchanged from Module 6. The AI Engine consumes a derived 14-column ATR-normalized feature set (`rsi_14`, `macd`, `macd_signal`, `macd_histogram`, `adx_14`, `plus_di_14`, `minus_di_14`, `volatility`, `momentum`, `bollinger_bandwidth`, `close_to_ema_atr`, `close_to_vwap_atr`, `swing_high_flag`, `swing_low_flag`) built from the full feature set in `dataset_builder.row_to_ml_features`.
 
 ---
 
 # Environment Variables
 
-Unchanged from Module 4.
+Unchanged from Module 4, plus:
+MODEL_STORAGE_PATH - required, defaults to `./models`, git-ignored
 
 ---
 
@@ -137,13 +145,13 @@ No Docker commands are used.
 Unit tests: Not yet added
 Integration tests: Not yet added
 Coverage: 0%
-Pending tests: statistics formulas against hand-verified reference cases, rule evaluator edge cases, no-lookahead correctness
+Pending tests: dataset labeling correctness (no-lookahead, stop-vs-target ordering), train/serve feature parity
 
 ---
 
 # Local Development
 
-See Local Testing & Running section above.
+See Local Testing & Running section above. `brew install libomp` is a one-time prerequisite for XGBoost/LightGBM on macOS.
 
 ---
 
@@ -158,13 +166,13 @@ Production readiness: Not production ready
 
 # Security
 
-Strategy rules are structured JSON evaluated by a fixed, safe interpreter — no `eval()` or dynamic code execution anywhere. `/backtest/run` requires `manage_strategies` permission, not just authentication.
+Training is admin-only. No dynamic code execution or user-controlled file paths anywhere in the ML pipeline. Model artifacts are git-ignored, generated locally, never fetched from an external source.
 
 ---
 
 # Performance
 
-Backtest simulation is O(n) per interval over the requested candle limit. Signal/trade persistence is per-trade, not batched — acceptable at current typical trade counts, flagged below for high-volume backtests.
+Training runs synchronously in-request; fine at current data volumes (seconds per full six-model training run). Flagged for background-job treatment if dataset sizes grow.
 
 ---
 
@@ -176,23 +184,23 @@ Market session detection does not account for Daylight Saving Time (carried over
 
 # Technical Debt
 
-- Re-running a backtest with an existing `strategy_name` does not update its stored `parameters` — only the first creation is persisted. Strategy versioning will need proper handling before Phase 11 exposes strategy management in the dashboard.
-- PnL calculation assumes the quote currency equals the account currency (USD), which holds for EUR/USD, GBP/USD, and XAU/USD but not for USD/JPY-style pairs where USD is the base currency. Proper multi-currency P&L conversion is deferred.
-- Slippage is modeled as a fixed, deterministic pip value rather than volatility-based, favoring backtest reproducibility over realism; documented as a future improvement.
-- Signal/trade writes are not batched; fine at current volumes, worth revisiting for very large backtests.
+- Risk/Reward/Confidence models are trained assuming a long-direction entry; short-direction values are expected to be used mirrored by the Decision Engine (Phase 8) rather than trained as separate models. Revisit if backtesting shows meaningful long/short asymmetry.
+- Training is synchronous within the request; move to a background job if it becomes slow at larger data volumes.
+- No automated tests yet for dataset labeling correctness.
+- PyTorch and Stable-Baselines3 deliberately deferred (see Free/Open-Source Validation) — revisit once enough historical data and a paper-trading environment exist, respectively.
 
 ---
 
 # Future Improvements
 
-Volatility-based slippage modeling. Multi-currency P&L accounting. Strategy parameter versioning on rerun. Persisting computed feature rows if backtest speed becomes a bottleneck (noted in Module 5).
+Deep learning models (PyTorch) once data volume justifies it. Reinforcement learning (Stable-Baselines3) once Phase 9's paper trading environment exists to train against. Background-job training via Celery.
 
 ---
 
 # Next Module
 
-Module: Phase 7 - AI Engine
+Module: Phase 8 - Decision Engine
 
-Objectives: Specialized models — Trend Classification, Entry Quality, Risk Prediction, Reward Prediction, Confidence Scoring, Market Regime Classification — trained on the feature data now available, running locally via free/open-source ML frameworks (scikit-learn, XGBoost, LightGBM, PyTorch).
+Objectives: Combine the six raw model predictions from this module into a single explainable recommendation — trend, confidence, supporting indicators, risk level, expected reward, reasoning, alternative scenarios, and invalidation conditions — never a bare BUY/SELL, populating a richer `signals` record than Phase 6's rule-based ones.
 
-Expected deliverables: Model training pipeline, model storage/versioning, prediction endpoints populating the `ai_predictions` table from Phase 4.
+Expected deliverables: A decision engine service that combines AI Engine outputs, a recommendation DTO enforcing the project's explainability requirements, and a REST endpoint.

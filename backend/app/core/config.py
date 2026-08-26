@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     TWELVE_DATA_REST_URL: str = "https://api.twelvedata.com"
     TWELVE_DATA_WS_URL: str = "wss://ws.twelvedata.com/v1/quotes/price"
     MARKET_INSTRUMENTS: list[str] = ["EUR/USD", "GBP/USD", "USD/JPY", "XAU/USD"]
+    MODEL_STORAGE_PATH: str = "./models"
 
 
 settings = Settings()

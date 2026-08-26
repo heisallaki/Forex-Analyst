@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.backtest import router as backtest_router
 from app.api.features import router as features_router
@@ -42,3 +43,4 @@ app.include_router(auth_router, prefix=settings.API_PREFIX)
 app.include_router(market_router, prefix=settings.API_PREFIX)
 app.include_router(features_router, prefix=settings.API_PREFIX)
 app.include_router(backtest_router, prefix=settings.API_PREFIX)
+app.include_router(ai_router, prefix=settings.API_PREFIX)

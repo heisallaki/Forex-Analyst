@@ -1,25 +1,13 @@
-# Python
-venv/
+#venv/
 __pycache__/
 *.pyc
-
-# Environment
 .env
-.env.*
-!.env.example
-
-# Node
 node_modules/
 dist/
 build/
 .vite/
-
-# Logs
 *.log
-
-# macOS
 .DS_Store
-
-# IDE
 .vscode/
 .idea/
+backend/models/
