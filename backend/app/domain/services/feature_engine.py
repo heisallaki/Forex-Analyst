@@ -67,6 +67,9 @@ def compute_feature_rows(candles: list[Candle]) -> list[dict]:
         rows.append(
             {
                 "timestamp": df["timestamp"].iloc[i],
+                "open": float(df["open"].iloc[i]),
+                "high": float(df["high"].iloc[i]),
+                "low": float(df["low"].iloc[i]),
                 "close": float(df["close"].iloc[i]),
                 "sma_20": _nan_to_none(df["sma_20"].iloc[i]),
                 "ema_20": _nan_to_none(df["ema_20"].iloc[i]),

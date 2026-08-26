@@ -6,13 +6,13 @@ Purpose: AI-powered forex and gold market analysis platform providing explainabl
 
 Goals: Live market monitoring, feature engineering, multi-model AI decision engine, backtesting, paper trading, future execution support.
 
-Current version: 0.5.0
+Current version: 0.6.0
 
-Current development phase: Phase 5 - Feature Engineering
+Current development phase: Phase 6 - Backtesting Engine
 
 Overall architecture: Clean Architecture monorepo. Backend: FastAPI (presentation/application/domain/infrastructure). Frontend: React 19 + TypeScript, feature-sliced design.
 
-Current completion percentage: 40%
+Current completion percentage: 48%
 
 ---
 
@@ -28,7 +28,7 @@ Cache/Messaging: Redis 7.2.16, self-built, run via `src/redis-server` (FREE, OSS
 
 Market Data: Twelve Data (FREE TIER)
 
-AI: Not yet implemented (feature engineering only in this phase)
+AI: Not yet implemented (rule-based backtesting only in this phase)
 
 Infrastructure: GitHub, GitHub Actions (FREE TIER)
 
@@ -44,28 +44,28 @@ No paid dependency has been introduced.
 ✅ Module 3: Market Data Engine
 ✅ Module 4: Database Layer
 ✅ Module 5: Feature Engineering
+✅ Module 6: Backtesting Engine
 
 ---
 
 # Current Module
 
-Module 5: Feature Engineering
+Module 6: Backtesting Engine
 
-Purpose: Compute EMA, SMA, VWAP, ATR, RSI, MACD, ADX, Bollinger Bands, swing highs/lows, market structure, liquidity sweeps, order blocks, Fair Value Gaps, volatility, trend strength, momentum, and session labels from candle data.
+Purpose: Simulate rule-based strategies against historical data with realistic execution costs, and compute full performance statistics.
 
-Completed features: `GET /api/v1/features/{symbol}` returning a full per-candle feature series, built entirely in-house on pandas/numpy.
+Completed features: `POST /api/v1/backtest/run` — multi-interval backtest execution with ATR-based stops/targets, risk-based position sizing, spread/slippage/commission modeling, and win rate / profit factor / Sharpe / Sortino / max drawdown / average R-multiple / monthly performance statistics. Populates `strategies`, `signals`, `trades`, `metrics`.
 
-Files created/modified: See Module 5 file lists above.
+Files created/modified: See Module 6 file lists above.
 
-Dependencies added: pandas, numpy.
+Dependencies added: None (standard library only).
 
-Installation requirements: None beyond `pip install pandas numpy`.
+Installation requirements: None beyond what already exists.
 
 ---
 
 # Pending Modules
 
-Phase 6: Backtesting Engine
 Phase 7: AI Engine
 Phase 8: Decision Engine
 Phase 9: Paper Trading
@@ -76,14 +76,20 @@ Phase 11: Dashboard
 
 # Database Schema
 
-Unchanged from Module 4. Feature engineering is computed on-demand and not persisted in this module; persistence of computed features (if needed for backtest replay speed) will be revisited in Phase 6 if profiling shows it's necessary.
+Unchanged from Module 4 — this module is the first to actually write into `strategies`, `signals`, `trades`, and `metrics`.
+
+**Backtest write pattern:**
+- One `strategies` row per unique `strategy_name` (created once; re-running with the same name does not currently update `parameters` — see Technical Debt).
+- One `signals` row per simulated trade, `reasoning` JSONB capturing the matched rule side and the feature snapshot at entry.
+- One `trades` row per simulated trade, `signal_id` linking back, `is_paper = true`.
+- Several `metrics` rows per backtest run (`win_rate`, `profit_factor`, `sharpe_ratio`, `sortino_ratio`, `max_drawdown_pct`, `average_r_multiple`, `final_equity`), tagged with `{strategy, symbol, interval}`.
 
 ---
 
 # API Endpoints
 
-Unchanged from Module 4, plus:
-GET /api/v1/features/{symbol} - full feature series for a symbol/interval - requires view_markets permission
+Unchanged from Module 5, plus:
+POST /api/v1/backtest/run - run a backtest across one or more intervals - requires manage_strategies permission
 
 ---
 
@@ -95,23 +101,13 @@ Unchanged from Module 3.
 
 # AI Models
 
-None yet — this module produces the inputs future models will consume.
+None yet — strategies in this module are rule-based, not learned.
 
 ---
 
 # Feature Engineering
 
-**Trend/momentum indicators:** SMA(20), EMA(20), MACD(12,26,9), ADX(14) with +DI/-DI, RSI(14)
-
-**Volatility indicators:** ATR(14), Bollinger Bands(20, 2σ), rolling log-return volatility(14)
-
-**Volume-derived:** VWAP (falls back to cumulative typical price when volume is zero/absent, which is common for forex feeds without real volume — documented limitation below)
-
-**Price action:** swing highs/lows (5-candle window), market structure classification (uptrend/downtrend/undetermined from swing sequences), liquidity sweep detection, order block detection (ATR-relative displacement heuristic), Fair Value Gap detection (3-candle pattern)
-
-**Context:** momentum (rate of change, 10-period), active market sessions per candle timestamp
-
-All indicators and price-action rules are implemented in-house on pandas/numpy — no third-party TA library dependency (see Module 5 Free/Open-Source Validation for why).
+Unchanged from Module 5, with `FeatureRow` extended to include `open`/`high`/`low` (needed for realistic next-bar-open execution in the backtest engine).
 
 ---
 
@@ -141,7 +137,7 @@ No Docker commands are used.
 Unit tests: Not yet added
 Integration tests: Not yet added
 Coverage: 0%
-Pending tests: indicator values against known reference calculations, price-action rule edge cases (start/end of series, flat markets)
+Pending tests: statistics formulas against hand-verified reference cases, rule evaluator edge cases, no-lookahead correctness
 
 ---
 
@@ -162,13 +158,13 @@ Production readiness: Not production ready
 
 # Security
 
-Unchanged from Module 4. No new attack surface.
+Strategy rules are structured JSON evaluated by a fixed, safe interpreter — no `eval()` or dynamic code execution anywhere. `/backtest/run` requires `manage_strategies` permission, not just authentication.
 
 ---
 
 # Performance
 
-Indicator math is fully vectorized. Price-action functions (swing points, structure, sweeps, order blocks, FVGs) use explicit Python loops, acceptable for on-demand REST calls at current limits (up to 5000 rows); flagged as a vectorization candidate if this ever needs to run inside a hot backtesting loop in Phase 6.
+Backtest simulation is O(n) per interval over the requested candle limit. Signal/trade persistence is per-trade, not batched — acceptable at current typical trade counts, flagged below for high-volume backtests.
 
 ---
 
@@ -180,22 +176,23 @@ Market session detection does not account for Daylight Saving Time (carried over
 
 # Technical Debt
 
-- VWAP falls back to a cumulative typical-price average when volume data is absent/zero, since most forex feeds (including our current provider) don't report meaningful volume; this is a known approximation, not true VWAP.
-- Price-action detection functions are not yet unit-tested against hand-verified reference cases.
-- No automated indicator correctness tests yet against a trusted reference implementation.
+- Re-running a backtest with an existing `strategy_name` does not update its stored `parameters` — only the first creation is persisted. Strategy versioning will need proper handling before Phase 11 exposes strategy management in the dashboard.
+- PnL calculation assumes the quote currency equals the account currency (USD), which holds for EUR/USD, GBP/USD, and XAU/USD but not for USD/JPY-style pairs where USD is the base currency. Proper multi-currency P&L conversion is deferred.
+- Slippage is modeled as a fixed, deterministic pip value rather than volatility-based, favoring backtest reproducibility over realism; documented as a future improvement.
+- Signal/trade writes are not batched; fine at current volumes, worth revisiting for very large backtests.
 
 ---
 
 # Future Improvements
 
-Persisting computed feature rows if Phase 6 backtesting shows recomputing on every backtest run is too slow. Vectorizing the price-action loop functions if profiling shows they're a bottleneck.
+Volatility-based slippage modeling. Multi-currency P&L accounting. Strategy parameter versioning on rerun. Persisting computed feature rows if backtest speed becomes a bottleneck (noted in Module 5).
 
 ---
 
 # Next Module
 
-Module: Phase 6 - Backtesting Engine
+Module: Phase 7 - AI Engine
 
-Objectives: Historical replay across the candle/feature data now available, multi-timeframe testing, transaction cost and spread/slippage simulation, and performance statistics (win rate, Sharpe, Sortino, drawdown, profit factor, R-multiple, monthly performance) — populating the `strategies`, `trades`, and `metrics` tables created in Phase 4.
+Objectives: Specialized models — Trend Classification, Entry Quality, Risk Prediction, Reward Prediction, Confidence Scoring, Market Regime Classification — trained on the feature data now available, running locally via free/open-source ML frameworks (scikit-learn, XGBoost, LightGBM, PyTorch).
 
-Expected deliverables: A backtest execution engine, strategy definition schema, and a REST endpoint to run and retrieve backtest results.
+Expected deliverables: Model training pipeline, model storage/versioning, prediction endpoints populating the `ai_predictions` table from Phase 4.

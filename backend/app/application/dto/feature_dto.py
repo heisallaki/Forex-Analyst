@@ -5,6 +5,9 @@ from pydantic import BaseModel
 
 class FeatureRow(BaseModel):
     timestamp: datetime
+    open: float
+    high: float
+    low: float
     close: float
     sma_20: float | None
     ema_20: float | None
