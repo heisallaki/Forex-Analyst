@@ -6,13 +6,13 @@ Purpose: AI-powered forex and gold market analysis platform providing explainabl
 
 Goals: Live market monitoring, feature engineering, multi-model AI decision engine, backtesting, paper trading, future execution support.
 
-Current version: 0.9.0
+Current version: 0.10.0
 
-Current development phase: Phase 9 - Paper Trading
+Current development phase: Phase 10 - Execution Engine
 
 Overall architecture: Clean Architecture monorepo. Backend: FastAPI (presentation/application/domain/infrastructure). Frontend: React 19 + TypeScript, feature-sliced design.
 
-Current completion percentage: 75%
+Current completion percentage: 85%
 
 ---
 
@@ -29,6 +29,8 @@ Cache/Messaging: Redis 7.2.16, self-built, run via `src/redis-server` (FREE, OSS
 Market Data: Twelve Data (FREE TIER)
 
 AI: Six local models + deterministic decision engine (Modules 7-8) (FREE, OSS)
+
+Execution: No broker connected. Architecture-only module, disabled by default (see Module 10).
 
 Infrastructure: GitHub, GitHub Actions (FREE TIER)
 
@@ -48,60 +50,49 @@ No paid dependency has been introduced.
 ✅ Module 7: AI Engine
 ✅ Module 8: Decision Engine
 ✅ Module 9: Paper Trading
+✅ Module 10: Execution Engine
 
 ---
 
 # Current Module
 
-Module 9: Paper Trading
+Module 10: Execution Engine
 
-Purpose: Virtual portfolios, real-time trade execution simulation against live prices, performance tracking, trade journal.
+Purpose: Broker-agnostic execution architecture, disabled by default in code (not just configuration), with risk-management guardrails exercised even though no broker is connected.
 
-Completed features: Portfolio creation/listing, opening trades with explicit or risk-based sizing, automatic stop-loss/take-profit execution driven by the live Twelve Data tick stream, manual close, trade journal, portfolio performance stats.
+Completed features: `BrokerAdapter` interface, `ExecutionGateway` enforcing a four-layer check (config disable → confirmation phrase → risk management → adapter, where the only adapter always rejects), full audit logging to `logs`, admin-only status and order-submission endpoints.
 
-Files created/modified: See Module 9 file lists above.
+Files created/modified: See Module 10 file lists above.
 
 Dependencies added: None.
 
-Installation requirements: None beyond what already exists.
+Installation requirements: None.
 
 ---
 
 # Pending Modules
 
-Phase 10: Execution Engine (disabled by default)
 Phase 11: Dashboard
 
 ---
 
 # Database Schema
 
-**portfolios**
-- id (PK), user_id (FK → users), name, base_currency, initial_balance, current_balance, created_at, updated_at
-
-**trades** (extended)
-- Added: portfolio_id (FK → portfolios, nullable — null for backtest-only trades from Module 6), stop_loss, take_profit
-- `portfolio_id IS NOT NULL` is the reliable way to distinguish real paper trades from backtest simulation trades; both share `is_paper = true`.
-
-Migration: `backend/alembic/versions/0004_portfolios_and_trade_orders.py`
+Unchanged from Module 9. This module is the first to actually write into `logs` — every execution attempt (rejected or, hypothetically, otherwise) produces one row with `source = "execution_engine"`.
 
 ---
 
 # API Endpoints
 
-Unchanged from Module 8, plus:
-POST /api/v1/paper/portfolios - create a portfolio - requires manage_strategies permission
-GET /api/v1/paper/portfolios - list current user's portfolios - requires view_markets permission
-GET /api/v1/paper/portfolios/{portfolio_id}/performance - performance stats - requires view_markets permission
-POST /api/v1/paper/trades - open a trade (explicit quantity or risk-based sizing) - requires manage_strategies permission
-POST /api/v1/paper/trades/{trade_id}/close - manually close a trade - requires manage_strategies permission
-GET /api/v1/paper/trades?portfolio_id=&status= - trade journal - requires view_markets permission
+Unchanged from Module 9, plus:
+GET /api/v1/execution/status - current execution configuration and limits - admin only
+POST /api/v1/execution/orders - submit an order; always rejected in this build (no broker adapter exists) - admin only
 
 ---
 
 # WebSocket Events
 
-Unchanged from Module 3. Internally, the position monitor (a new background task, not client-facing) also subscribes to the `market:ticks` Redis channel used by that WebSocket.
+Unchanged from Module 3.
 
 ---
 
@@ -119,7 +110,11 @@ Unchanged from Module 8.
 
 # Environment Variables
 
-Unchanged from Module 7.
+Unchanged from Module 7, plus:
+EXECUTION_ENABLED - required, defaults to `false`, must stay `false` in normal operation
+EXECUTION_MAX_POSITION_SIZE - required, default 10000
+EXECUTION_MAX_OPEN_POSITIONS - required, default 3
+EXECUTION_MAX_DAILY_LOSS_PCT - required, default 5.0
 
 ---
 
@@ -143,7 +138,7 @@ No Docker commands are used.
 Unit tests: Not yet added
 Integration tests: Not yet added
 Coverage: 0%
-Pending tests: stop-loss/take-profit trigger boundary conditions, portfolio balance arithmetic, cross-user portfolio access isolation
+Pending tests: each of the four gateway check layers individually, confirmation-phrase exact-match behavior, risk-management violation combinations
 
 ---
 
@@ -164,41 +159,39 @@ Production readiness: Not production ready
 
 # Security
 
-Portfolio access is scoped by both portfolio ID and requesting user ID at the repository layer — no cross-user data leakage even with a guessed UUID. Trading actions require `manage_strategies`; read access requires only `view_markets`.
+Execution endpoints require the admin role — the strictest gate in the system. Live execution requires both a configuration flag and an exact hardcoded confirmation phrase, and even then resolves to `NoBrokerConfiguredAdapter`, which unconditionally rejects. Every attempt is audit-logged to `logs`.
 
 ---
 
 # Performance
 
-Position monitoring reuses the existing tick Redis channel rather than opening new upstream connections or polling loops.
+Not applicable — no hot path, no external calls in this module.
 
 ---
 
 # Known Issues
 
-- Trades opened without a `stop_loss` will never auto-close — they remain open until manually closed via `/paper/trades/{id}/close`. This is documented, intentional behavior, not a bug, but is a real risk-management gap worth being aware of.
 - Market session detection does not account for Daylight Saving Time (carried over from Module 3).
 
 ---
 
 # Technical Debt
 
-- `compute_pnl`/`pip_size` in `trading_math.py` duplicate similar logic already present in `backtest_engine.py`'s private `_pip_size`; a shared module would be cleaner but wasn't worth risking a change to tested Module 6 code for this pass.
-- No margin/leverage modeling — position sizing is purely risk-amount-based, not account-leverage-aware.
-- No automated tests yet for trigger boundary conditions.
+- Risk-management checks currently receive `open_positions_count=0` and `daily_loss_pct=0.0` as hardcoded placeholders from `submit_execution_order_use_case`, since there's no real broker to source live position/P&L data from yet. Wiring these to the paper-trading portfolio (or a future live-account feed) as a proxy is worth considering once Phase 11's dashboard needs to display this meaningfully.
+- No automated tests yet for the four-layer gateway logic.
 
 ---
 
 # Future Improvements
 
-Shared pip-size/PnL utility module across backtest and paper trading. Leverage/margin modeling. Partial position closes. Trailing stops.
+An actual `BrokerAdapter` implementation (e.g. OANDA) would be the natural next real integration, evaluated carefully for free/practice-account terms before ever being connected — and even then, `EXECUTION_ENABLED` would need to be deliberately set by the person running this, never by default.
 
 ---
 
 # Next Module
 
-Module: Phase 10 - Execution Engine
+Module: Phase 11 - Dashboard
 
-Objectives: Architecture for future broker integration, initially disabled by default, with robust risk management guardrails. No live trading connection is established automatically.
+Objectives: A professional, Bloomberg-style interface tying every previous module together — Dashboard, Markets, Charts, AI Analysis, Signals, Strategies, Backtesting, Paper Trading, Analytics, Performance, Settings.
 
-Expected deliverables: An execution engine interface/abstraction ready for a future broker adapter, a hard "disabled" flag enforced in code (not just configuration), and risk-management checks that would apply even once enabled.
+Expected deliverables: Full frontend build-out consuming every REST/WebSocket endpoint created in Modules 2-10, including TradingView Lightweight Charts and Recharts as specified in the original tech stack. This is the final module — README.md gets its one and only update after this phase completes.

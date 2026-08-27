@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     TWELVE_DATA_WS_URL: str = "wss://ws.twelvedata.com/v1/quotes/price"
     MARKET_INSTRUMENTS: list[str] = ["EUR/USD", "GBP/USD", "USD/JPY", "XAU/USD"]
     MODEL_STORAGE_PATH: str = "./models"
+    EXECUTION_ENABLED: bool = False
+    EXECUTION_MAX_POSITION_SIZE: float = 10000.0
+    EXECUTION_MAX_OPEN_POSITIONS: int = 3
+    EXECUTION_MAX_DAILY_LOSS_PCT: float = 5.0
 
 
 settings = Settings()
