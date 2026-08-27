@@ -9,7 +9,9 @@ from app.application.dto.decision_dto import RecommendationResponse
 from app.application.use_cases.generate_recommendation import generate_recommendation_use_case
 from app.domain.entities.user import User
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
-from app.infrastructure.repositories.ai_prediction_repository_impl import SqlAlchemyAIPredictionRepository
+from app.infrastructure.repositories.ai_prediction_repository_impl import (
+    SqlAlchemyAIPredictionRepository,
+)
 from app.infrastructure.repositories.backtest_repository_impl import SqlAlchemyBacktestRepository
 from app.infrastructure.repositories.market_repository_impl import SqlAlchemyMarketRepository
 

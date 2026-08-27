@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_permission
-from app.application.dto.backtest_dto import BacktestRunRequest, BacktestRunResponse, StrategyListItem
+from app.application.dto.backtest_dto import (
+    BacktestRunRequest,
+    BacktestRunResponse,
+    StrategyListItem,
+)
 from app.application.use_cases.run_backtest import run_backtest_use_case
 from app.domain.entities.user import User
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
@@ -34,6 +38,8 @@ async def strategies(
     backtest_repository = SqlAlchemyBacktestRepository(session)
     strategy_list = await backtest_repository.list_strategies()
     return [
-        StrategyListItem(id=str(item.id), name=item.name, description=item.description, is_active=item.is_active)
+        StrategyListItem(
+            id=str(item.id), name=item.name, description=item.description, is_active=item.is_active
+        )
         for item in strategy_list
     ]
