@@ -35,13 +35,9 @@ class BacktestRunRequest(BaseModel):
     @model_validator(mode="after")
     def validate_entry_rules(self):
         has_long = self.entry_long_rules is not None and len(self.entry_long_rules.conditions) > 0
-        has_short = (
-            self.entry_short_rules is not None and len(self.entry_short_rules.conditions) > 0
-        )
+        has_short = self.entry_short_rules is not None and len(self.entry_short_rules.conditions) > 0
         if not has_long and not has_short:
-            raise ValueError(
-                "At least one of entry_long_rules or entry_short_rules must have conditions"
-            )
+            raise ValueError("At least one of entry_long_rules or entry_short_rules must have conditions")
         return self
 
 
@@ -82,3 +78,20 @@ class BacktestRunResponse(BaseModel):
     strategy_name: str
     symbol: str
     results: list[BacktestIntervalResult]
+
+
+class SignalListItem(BaseModel):
+    id: str
+    strategy_id: str | None
+    symbol: str
+    direction: str
+    confidence: float
+    reasoning: dict
+    created_at: datetime
+
+
+class StrategyListItem(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    is_active: bool

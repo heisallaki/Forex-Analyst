@@ -1,15 +1,22 @@
+import { httpGet } from "@/shared/api/httpClient";
 import { MarketStatus } from "@/features/market/types";
-import { useAuthStore } from "@/features/auth/store/authStore";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
 export async function getMarketStatus(): Promise<MarketStatus> {
-  const accessToken = useAuthStore.getState().accessToken;
-  const response = await fetch(`${API_BASE_URL}/market/status`, {
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
-  });
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-  return response.json() as Promise<MarketStatus>;
+  return httpGet<MarketStatus>("/market/status");
+}
+
+export interface CandleData {
+  symbol: string;
+  interval: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+  timestamp: string;
+}
+
+export async function getCandles(symbol: string, interval: string, limit: number): Promise<CandleData[]> {
+  const encodedSymbol = encodeURIComponent(symbol);
+  return httpGet<CandleData[]>(`/market/candles/${encodedSymbol}?interval=${interval}&limit=${limit}`);
 }

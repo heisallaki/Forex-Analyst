@@ -6,19 +6,19 @@ Purpose: AI-powered forex and gold market analysis platform providing explainabl
 
 Goals: Live market monitoring, feature engineering, multi-model AI decision engine, backtesting, paper trading, future execution support.
 
-Current version: 0.10.0
+Current version: 1.0.0
 
-Current development phase: Phase 10 - Execution Engine
+Current development phase: Complete — all 11 phases delivered
 
 Overall architecture: Clean Architecture monorepo. Backend: FastAPI (presentation/application/domain/infrastructure). Frontend: React 19 + TypeScript, feature-sliced design.
 
-Current completion percentage: 85%
+Current completion percentage: 100%
 
 ---
 
 # Technology Stack
 
-Frontend: React 19, TypeScript, Vite, MUI, React Router, React Hook Form, Zod, Zustand (FREE, OSS)
+Frontend: React 19, TypeScript, Vite, MUI v6, React Router, React Hook Form, Zod, Zustand, TradingView Lightweight Charts, Recharts (FREE, OSS)
 
 Backend: Python, FastAPI, Uvicorn, Pydantic Settings, SQLAlchemy 2.0, Alembic, pwdlib[argon2], python-jose, httpx, websockets, redis-py, certifi, pandas, numpy, scikit-learn, XGBoost, LightGBM, joblib (FREE, OSS)
 
@@ -28,13 +28,13 @@ Cache/Messaging: Redis 7.2.16, self-built, run via `src/redis-server` (FREE, OSS
 
 Market Data: Twelve Data (FREE TIER)
 
-AI: Six local models + deterministic decision engine (Modules 7-8) (FREE, OSS)
+AI: Six local models + deterministic decision engine, no external AI/LLM API used anywhere (FREE, OSS)
 
-Execution: No broker connected. Architecture-only module, disabled by default (see Module 10).
+Execution: Architecture-only, disabled by default, no broker connected
 
 Infrastructure: GitHub, GitHub Actions (FREE TIER)
 
-No paid dependency has been introduced.
+No paid dependency exists anywhere in this project.
 
 
 ---
@@ -51,42 +51,41 @@ No paid dependency has been introduced.
 ✅ Module 8: Decision Engine
 ✅ Module 9: Paper Trading
 ✅ Module 10: Execution Engine
+✅ Module 11: Dashboard
 
 ---
 
 # Current Module
 
-Module 10: Execution Engine
+Module 11: Dashboard (final module)
 
-Purpose: Broker-agnostic execution architecture, disabled by default in code (not just configuration), with risk-management guardrails exercised even though no broker is connected.
+Purpose: Complete frontend tying together every backend capability from Modules 2-10.
 
-Completed features: `BrokerAdapter` interface, `ExecutionGateway` enforcing a four-layer check (config disable → confirmation phrase → risk management → adapter, where the only adapter always rejects), full audit logging to `logs`, admin-only status and order-submission endpoints.
+Completed features: Ten-section navigated dashboard — Dashboard, Markets, Charts, AI Analysis, Signals, Strategies, Backtesting, Paper Trading, Analytics, Settings.
 
-Files created/modified: See Module 10 file lists above.
+Files created/modified: See Module 11 file lists above. Two small read-only backend endpoints added (`GET /decision/signals`, `GET /backtest/strategies`).
 
-Dependencies added: None.
-
-Installation requirements: None.
+Dependencies added: lightweight-charts, recharts.
 
 ---
 
 # Pending Modules
 
-Phase 11: Dashboard
+None. All 11 phases are complete.
 
 ---
 
 # Database Schema
 
-Unchanged from Module 9. This module is the first to actually write into `logs` — every execution attempt (rejected or, hypothetically, otherwise) produces one row with `source = "execution_engine"`.
+Unchanged from Module 9-10. Full schema: `users`, `refresh_tokens`, `candles` (hypertable), `ticks` (hypertable), `strategies`, `signals`, `trades` (backtest + paper, distinguished by `portfolio_id`), `ai_predictions`, `logs`, `metrics`, `portfolios`.
 
 ---
 
 # API Endpoints
 
-Unchanged from Module 9, plus:
-GET /api/v1/execution/status - current execution configuration and limits - admin only
-POST /api/v1/execution/orders - submit an order; always rejected in this build (no broker adapter exists) - admin only
+All endpoints from Modules 2-10, plus:
+GET /api/v1/decision/signals - list recent signals - requires view_markets permission
+GET /api/v1/backtest/strategies - list strategies - requires view_markets permission
 
 ---
 
@@ -110,17 +109,13 @@ Unchanged from Module 8.
 
 # Environment Variables
 
-Unchanged from Module 7, plus:
-EXECUTION_ENABLED - required, defaults to `false`, must stay `false` in normal operation
-EXECUTION_MAX_POSITION_SIZE - required, default 10000
-EXECUTION_MAX_OPEN_POSITIONS - required, default 3
-EXECUTION_MAX_DAILY_LOSS_PCT - required, default 5.0
+Unchanged from Module 10. No new variables in this module.
 
 ---
 
 # Configuration Files
 
-Unchanged from Module 7.
+Unchanged from Module 10.
 
 ---
 
@@ -129,7 +124,7 @@ Unchanged from Module 7.
 Backend: ruff check ., alembic upgrade head, alembic revision --autogenerate -m "message"
 Frontend: npm run dev, npm run build, npm run lint, npm run format
 
-No Docker commands are used.
+No Docker commands are used anywhere in this project.
 
 ---
 
@@ -138,13 +133,13 @@ No Docker commands are used.
 Unit tests: Not yet added
 Integration tests: Not yet added
 Coverage: 0%
-Pending tests: each of the four gateway check layers individually, confirmation-phrase exact-match behavior, risk-management violation combinations
+Pending tests: accumulated across every module's Technical Debt sections — a dedicated testing pass is the clear next priority beyond the original 11-phase plan.
 
 ---
 
 # Local Development
 
-See Local Testing & Running section above.
+See each module's Local Testing & Running section; Module 11's covers the full end-to-end walkthrough.
 
 ---
 
@@ -152,46 +147,43 @@ See Local Testing & Running section above.
 
 Current deployment status: Not deployed
 Deployment provider: Not yet selected
-CI/CD: GitHub Actions (free tier)
-Production readiness: Not production ready
+CI/CD: GitHub Actions (free tier) — lint/build only, no deployment pipeline yet
+Production readiness: Functionally complete for personal/local use; not hardened for public production deployment (see Security and Technical Debt below)
 
 ---
 
 # Security
 
-Execution endpoints require the admin role — the strictest gate in the system. Live execution requires both a configuration flag and an exact hardcoded confirmation phrase, and even then resolves to `NoBrokerConfiguredAdapter`, which unconditionally rejects. Every attempt is audit-logged to `logs`.
+Full auth/RBAC (Module 2), portfolio isolation by user (Module 9), execution engine locked by two independent layers plus no broker adapter (Module 10). No rate limiting on any endpoint yet. No automated security testing yet.
 
 ---
 
 # Performance
 
-Not applicable — no hot path, no external calls in this module.
+TimescaleDB hypertables for time-series data, Redis pub/sub fan-out for live prices, capped result sizes throughout the frontend.
 
 ---
 
 # Known Issues
 
-- Market session detection does not account for Daylight Saving Time (carried over from Module 3).
+- Market session detection does not account for Daylight Saving Time.
+- Trades without a stop-loss never auto-close (documented, intentional).
+- Backtest equity curve chart shows only the first requested interval's series when multiple intervals are run.
 
 ---
 
 # Technical Debt
 
-- Risk-management checks currently receive `open_positions_count=0` and `daily_loss_pct=0.0` as hardcoded placeholders from `submit_execution_order_use_case`, since there's no real broker to source live position/P&L data from yet. Wiring these to the paper-trading portfolio (or a future live-account feed) as a proxy is worth considering once Phase 11's dashboard needs to display this meaningfully.
-- No automated tests yet for the four-layer gateway logic.
+Accumulated across all 11 modules — see each module's section in prior versions of this document (preserved in git history). Highest-priority items: automated test coverage (currently 0% throughout), rate limiting, DST-aware session logic, multi-currency P&L accuracy.
 
 ---
 
 # Future Improvements
 
-An actual `BrokerAdapter` implementation (e.g. OANDA) would be the natural next real integration, evaluated carefully for free/practice-account terms before ever being connected — and even then, `EXECUTION_ENABLED` would need to be deliberately set by the person running this, never by default.
+PyTorch models once data volume justifies it. Reinforcement learning once more live paper-trading history accumulates. A real (carefully vetted, free/practice-account) broker adapter for Module 10. Configurable decision-engine thresholds. Full automated test suite.
 
 ---
 
 # Next Module
 
-Module: Phase 11 - Dashboard
-
-Objectives: A professional, Bloomberg-style interface tying every previous module together — Dashboard, Markets, Charts, AI Analysis, Signals, Strategies, Backtesting, Paper Trading, Analytics, Performance, Settings.
-
-Expected deliverables: Full frontend build-out consuming every REST/WebSocket endpoint created in Modules 2-10, including TradingView Lightweight Charts and Recharts as specified in the original tech stack. This is the final module — README.md gets its one and only update after this phase completes.
+None — the 11-phase build plan is complete. Future work should be scoped as new, explicitly-requested modules following the same workflow used throughout this build.
