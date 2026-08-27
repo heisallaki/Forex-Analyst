@@ -11,8 +11,10 @@ from app.api.decision import router as decision_router
 from app.api.features import router as features_router
 from app.api.health import router as health_router
 from app.api.market import router as market_router
+from app.api.paper_trading import router as paper_trading_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.infrastructure.market_data.position_monitor import run_position_monitor
 from app.infrastructure.market_data.twelve_data_stream import run_market_stream
 
 configure_logging(settings.APP_DEBUG)
@@ -21,12 +23,15 @@ configure_logging(settings.APP_DEBUG)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     stream_task = asyncio.create_task(run_market_stream())
+    monitor_task = asyncio.create_task(run_position_monitor())
     yield
     stream_task.cancel()
-    try:
-        await stream_task
-    except asyncio.CancelledError:
-        pass
+    monitor_task.cancel()
+    for task in (stream_task, monitor_task):
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.APP_DEBUG, lifespan=lifespan)
@@ -46,3 +51,4 @@ app.include_router(features_router, prefix=settings.API_PREFIX)
 app.include_router(backtest_router, prefix=settings.API_PREFIX)
 app.include_router(ai_router, prefix=settings.API_PREFIX)
 app.include_router(decision_router, prefix=settings.API_PREFIX)
+app.include_router(paper_trading_router, prefix=settings.API_PREFIX)

@@ -6,13 +6,13 @@ Purpose: AI-powered forex and gold market analysis platform providing explainabl
 
 Goals: Live market monitoring, feature engineering, multi-model AI decision engine, backtesting, paper trading, future execution support.
 
-Current version: 0.8.0
+Current version: 0.9.0
 
-Current development phase: Phase 8 - Decision Engine
+Current development phase: Phase 9 - Paper Trading
 
 Overall architecture: Clean Architecture monorepo. Backend: FastAPI (presentation/application/domain/infrastructure). Frontend: React 19 + TypeScript, feature-sliced design.
 
-Current completion percentage: 65%
+Current completion percentage: 75%
 
 ---
 
@@ -28,7 +28,7 @@ Cache/Messaging: Redis 7.2.16, self-built, run via `src/redis-server` (FREE, OSS
 
 Market Data: Twelve Data (FREE TIER)
 
-AI: Six local models (Module 7) combined by a deterministic decision engine (Module 8) — no external LLM/AI API used anywhere (FREE, OSS)
+AI: Six local models + deterministic decision engine (Modules 7-8) (FREE, OSS)
 
 Infrastructure: GitHub, GitHub Actions (FREE TIER)
 
@@ -47,18 +47,19 @@ No paid dependency has been introduced.
 ✅ Module 6: Backtesting Engine
 ✅ Module 7: AI Engine
 ✅ Module 8: Decision Engine
+✅ Module 9: Paper Trading
 
 ---
 
 # Current Module
 
-Module 8: Decision Engine
+Module 9: Paper Trading
 
-Purpose: Combine the six AI Engine predictions into one explainable recommendation, enforcing minimum confidence and reward-to-risk thresholds so the system recommends `no_trade` honestly rather than forcing a directional call.
+Purpose: Virtual portfolios, real-time trade execution simulation against live prices, performance tracking, trade journal.
 
-Completed features: `GET /api/v1/decision/recommend/{symbol}` — full recommendation with trend, confidence, risk level, expected reward, supporting indicators, reasoning, alternative scenarios, invalidation conditions, and a disclaimer. Persists to `signals`.
+Completed features: Portfolio creation/listing, opening trades with explicit or risk-based sizing, automatic stop-loss/take-profit execution driven by the live Twelve Data tick stream, manual close, trade journal, portfolio performance stats.
 
-Files created/modified: See Module 8 file lists above.
+Files created/modified: See Module 9 file lists above.
 
 Dependencies added: None.
 
@@ -68,7 +69,6 @@ Installation requirements: None beyond what already exists.
 
 # Pending Modules
 
-Phase 9: Paper Trading
 Phase 10: Execution Engine (disabled by default)
 Phase 11: Dashboard
 
@@ -76,32 +76,44 @@ Phase 11: Dashboard
 
 # Database Schema
 
-Unchanged from Module 4. This module writes richer `signals` rows than Module 6's rule-based backtest signals — `reasoning` JSONB now includes `risk_level`, `market_regime`, `supporting_indicators`, `alternative_scenarios`, `invalidation_conditions`, and `source: "decision_engine"` to distinguish AI-generated signals from backtest-generated ones.
+**portfolios**
+- id (PK), user_id (FK → users), name, base_currency, initial_balance, current_balance, created_at, updated_at
+
+**trades** (extended)
+- Added: portfolio_id (FK → portfolios, nullable — null for backtest-only trades from Module 6), stop_loss, take_profit
+- `portfolio_id IS NOT NULL` is the reliable way to distinguish real paper trades from backtest simulation trades; both share `is_paper = true`.
+
+Migration: `backend/alembic/versions/0004_portfolios_and_trade_orders.py`
 
 ---
 
 # API Endpoints
 
-Unchanged from Module 7, plus:
-GET /api/v1/decision/recommend/{symbol} - combined, explainable recommendation - requires view_markets permission
+Unchanged from Module 8, plus:
+POST /api/v1/paper/portfolios - create a portfolio - requires manage_strategies permission
+GET /api/v1/paper/portfolios - list current user's portfolios - requires view_markets permission
+GET /api/v1/paper/portfolios/{portfolio_id}/performance - performance stats - requires view_markets permission
+POST /api/v1/paper/trades - open a trade (explicit quantity or risk-based sizing) - requires manage_strategies permission
+POST /api/v1/paper/trades/{trade_id}/close - manually close a trade - requires manage_strategies permission
+GET /api/v1/paper/trades?portfolio_id=&status= - trade journal - requires view_markets permission
 
 ---
 
 # WebSocket Events
 
-Unchanged from Module 3.
+Unchanged from Module 3. Internally, the position monitor (a new background task, not client-facing) also subscribes to the `market:ticks` Redis channel used by that WebSocket.
 
 ---
 
 # AI Models
 
-Unchanged from Module 7. This module adds no new models — it combines their outputs.
+Unchanged from Module 7-8.
 
 ---
 
 # Feature Engineering
 
-Unchanged from Module 7.
+Unchanged from Module 8.
 
 ---
 
@@ -131,7 +143,7 @@ No Docker commands are used.
 Unit tests: Not yet added
 Integration tests: Not yet added
 Coverage: 0%
-Pending tests: threshold-boundary behavior (confidence/RR exactly at the cutoff), missing-model graceful degradation
+Pending tests: stop-loss/take-profit trigger boundary conditions, portfolio balance arithmetic, cross-user portfolio access isolation
 
 ---
 
@@ -152,40 +164,41 @@ Production readiness: Not production ready
 
 # Security
 
-No new attack surface. Reuses existing permission gates and persistence patterns.
+Portfolio access is scoped by both portfolio ID and requesting user ID at the repository layer — no cross-user data leakage even with a guessed UUID. Trading actions require `manage_strategies`; read access requires only `view_markets`.
 
 ---
 
 # Performance
 
-Eliminated a redundant candle/feature fetch by refactoring `predict_market_use_case` into a shared `predict_market_with_features` function, reused by both the `/ai/predict` endpoint and this module's recommendation flow.
+Position monitoring reuses the existing tick Redis channel rather than opening new upstream connections or polling loops.
 
 ---
 
 # Known Issues
 
-Market session detection does not account for Daylight Saving Time (carried over from Module 3).
+- Trades opened without a `stop_loss` will never auto-close — they remain open until manually closed via `/paper/trades/{id}/close`. This is documented, intentional behavior, not a bug, but is a real risk-management gap worth being aware of.
+- Market session detection does not account for Daylight Saving Time (carried over from Module 3).
 
 ---
 
 # Technical Debt
 
-- `MIN_CONFIDENCE_THRESHOLD` (55%) and `MIN_REWARD_RISK_RATIO` (1.2) are hardcoded constants; making these configurable (per-user risk tolerance, or admin-tunable) is a reasonable future improvement once the dashboard (Phase 11) exists to expose them.
-- No automated tests yet for exact threshold-boundary behavior.
-- Reasoning templates are in English only; internationalization is out of scope for now.
+- `compute_pnl`/`pip_size` in `trading_math.py` duplicate similar logic already present in `backtest_engine.py`'s private `_pip_size`; a shared module would be cleaner but wasn't worth risking a change to tested Module 6 code for this pass.
+- No margin/leverage modeling — position sizing is purely risk-amount-based, not account-leverage-aware.
+- No automated tests yet for trigger boundary conditions.
 
 ---
 
 # Future Improvements
 
-Configurable confidence/reward-risk thresholds. Multi-symbol batch recommendations. Historical recommendation accuracy tracking (comparing past `no_trade`/`long`/`short` calls against what actually happened) once enough signals have accumulated.
+Shared pip-size/PnL utility module across backtest and paper trading. Leverage/margin modeling. Partial position closes. Trailing stops.
 
 ---
 
 # Next Module
 
-Module: Phase 9 - Paper Trading
+Module: Phase 10 - Execution Engine
 
-Objectives: A virtual portfolio, trade execution simulator, performance tracking, and trade journal — turning Phase 8's recommendations (and Phase 6's backtested strategies) into simulated live positions with `is_paper = true` in the `trades` table.
+Objectives: Architecture for future broker integration, initially disabled by default, with robust risk management guardrails. No live trading connection is established automatically.
 
-Expected deliverables: Portfolio balance tracking, simulated order execution against live prices from Phase 3, position management (open/close/stop/target), and a paper trading REST API.
+Expected deliverables: An execution engine interface/abstraction ready for a future broker adapter, a hard "disabled" flag enforced in code (not just configuration), and risk-management checks that would apply even once enabled.

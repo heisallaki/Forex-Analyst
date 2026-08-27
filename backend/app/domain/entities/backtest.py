@@ -37,6 +37,9 @@ class Trade:
     pnl: float | None
     opened_at: datetime
     closed_at: datetime | None
+    portfolio_id: UUID | None = None
+    stop_loss: float | None = None
+    take_profit: float | None = None
 
 
 @dataclass

@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.domain.entities.market import Tick
 from app.infrastructure.cache.redis_client import get_redis_client
 from app.infrastructure.database.session import AsyncSessionLocal
+from app.infrastructure.market_data.price_cache import LATEST_PRICE_KEY_PREFIX
 from app.infrastructure.repositories.market_repository_impl import SqlAlchemyMarketRepository
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,10 @@ async def run_market_stream() -> None:
                         continue
                     if payload.get("event") == "price":
                         await redis_client.publish(MARKET_TICKS_CHANNEL, json.dumps(payload))
+                        symbol = payload.get("symbol")
+                        price = payload.get("price")
+                        if symbol and price is not None:
+                            await redis_client.set(f"{LATEST_PRICE_KEY_PREFIX}{symbol}", str(price))
                         asyncio.create_task(_persist_tick(payload))
         except asyncio.CancelledError:
             raise
