@@ -44,13 +44,13 @@ async def _save_and_wrap(
     )
 
 
-async def predict_market_use_case(
+async def predict_market_with_features(
     symbol: str,
     interval: str,
     market_repository: MarketRepository,
     prediction_repository: AIPredictionRepository,
     client: TwelveDataClient,
-) -> PredictMarketResponse:
+) -> tuple[PredictMarketResponse, dict]:
     candle_responses = await get_historical_candles(
         symbol, interval, 100, market_repository, client
     )
@@ -154,7 +154,7 @@ async def predict_market_use_case(
         )
     )
 
-    return PredictMarketResponse(
+    response = PredictMarketResponse(
         symbol=symbol,
         interval=interval,
         timestamp=latest_row["timestamp"],
@@ -164,3 +164,17 @@ async def predict_market_use_case(
             "The Decision Engine combines these into an explainable recommendation."
         ),
     )
+    return response, latest_row
+
+
+async def predict_market_use_case(
+    symbol: str,
+    interval: str,
+    market_repository: MarketRepository,
+    prediction_repository: AIPredictionRepository,
+    client: TwelveDataClient,
+) -> PredictMarketResponse:
+    response, _ = await predict_market_with_features(
+        symbol, interval, market_repository, prediction_repository, client
+    )
+    return response

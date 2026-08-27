@@ -6,13 +6,13 @@ Purpose: AI-powered forex and gold market analysis platform providing explainabl
 
 Goals: Live market monitoring, feature engineering, multi-model AI decision engine, backtesting, paper trading, future execution support.
 
-Current version: 0.7.0
+Current version: 0.8.0
 
-Current development phase: Phase 7 - AI Engine
+Current development phase: Phase 8 - Decision Engine
 
 Overall architecture: Clean Architecture monorepo. Backend: FastAPI (presentation/application/domain/infrastructure). Frontend: React 19 + TypeScript, feature-sliced design.
 
-Current completion percentage: 58%
+Current completion percentage: 65%
 
 ---
 
@@ -28,7 +28,7 @@ Cache/Messaging: Redis 7.2.16, self-built, run via `src/redis-server` (FREE, OSS
 
 Market Data: Twelve Data (FREE TIER)
 
-AI: scikit-learn, XGBoost, LightGBM — six local models trained per symbol/interval, no external AI API (FREE, OSS). PyTorch and Stable-Baselines3 deliberately deferred (see Module 7 Free/Open-Source Validation).
+AI: Six local models (Module 7) combined by a deterministic decision engine (Module 8) — no external LLM/AI API used anywhere (FREE, OSS)
 
 Infrastructure: GitHub, GitHub Actions (FREE TIER)
 
@@ -46,28 +46,28 @@ No paid dependency has been introduced.
 ✅ Module 5: Feature Engineering
 ✅ Module 6: Backtesting Engine
 ✅ Module 7: AI Engine
+✅ Module 8: Decision Engine
 
 ---
 
 # Current Module
 
-Module 7: AI Engine
+Module 8: Decision Engine
 
-Purpose: Train and serve six specialized local models (trend, entry quality, confidence, risk, reward, market regime), populating `ai_predictions`.
+Purpose: Combine the six AI Engine predictions into one explainable recommendation, enforcing minimum confidence and reward-to-risk thresholds so the system recommends `no_trade` honestly rather than forcing a directional call.
 
-Completed features: `POST /api/v1/ai/train` (admin only) trains and versions all six models per symbol/interval; `GET /api/v1/ai/predict/{symbol}` returns raw predictions from the latest trained models and persists them.
+Completed features: `GET /api/v1/decision/recommend/{symbol}` — full recommendation with trend, confidence, risk level, expected reward, supporting indicators, reasoning, alternative scenarios, invalidation conditions, and a disclaimer. Persists to `signals`.
 
-Files created/modified: See Module 7 file lists above.
+Files created/modified: See Module 8 file lists above.
 
-Dependencies added: scikit-learn, xgboost, lightgbm, joblib; libomp (Homebrew, macOS OpenMP runtime).
+Dependencies added: None.
 
-Installation requirements: `brew install libomp` before `pip install xgboost lightgbm`.
+Installation requirements: None beyond what already exists.
 
 ---
 
 # Pending Modules
 
-Phase 8: Decision Engine
 Phase 9: Paper Trading
 Phase 10: Execution Engine (disabled by default)
 Phase 11: Dashboard
@@ -76,15 +76,14 @@ Phase 11: Dashboard
 
 # Database Schema
 
-Unchanged from Module 4 — this module is the first to write into `ai_predictions`. Each `/ai/predict` call writes six rows (`prediction_type`: trend, entry_quality, confidence, risk, reward, regime), each with a structured `output` JSONB.
+Unchanged from Module 4. This module writes richer `signals` rows than Module 6's rule-based backtest signals — `reasoning` JSONB now includes `risk_level`, `market_regime`, `supporting_indicators`, `alternative_scenarios`, `invalidation_conditions`, and `source: "decision_engine"` to distinguish AI-generated signals from backtest-generated ones.
 
 ---
 
 # API Endpoints
 
-Unchanged from Module 6, plus:
-POST /api/v1/ai/train - train all six models for a symbol/interval - admin only
-GET /api/v1/ai/predict/{symbol} - raw model predictions (not recommendations) for the latest bar - requires view_markets permission
+Unchanged from Module 7, plus:
+GET /api/v1/decision/recommend/{symbol} - combined, explainable recommendation - requires view_markets permission
 
 ---
 
@@ -96,38 +95,25 @@ Unchanged from Module 3.
 
 # AI Models
 
-**Trend Classification** (XGBoost, multiclass) — Inputs: 14 ATR-normalized technical features. Outputs: predicted trend (up/down/flat) with per-class probability. Training status: trained on demand via `/ai/train`. Evaluation: accuracy, macro F1.
-
-**Entry Quality** (LightGBM, binary) — Inputs: same 14 features. Outputs: probability the current bar precedes a tradeable move (direction-agnostic). Evaluation: accuracy, ROC-AUC.
-
-**Confidence Scoring** (Logistic Regression, binary) — Inputs: same 14 features. Outputs: probability a long-direction trade from this bar hits its ATR-based target before its stop. Evaluation: accuracy, ROC-AUC.
-
-**Risk Prediction** (Gradient Boosting Regressor) — Inputs: same 14 features. Outputs: predicted maximum adverse excursion, in ATR units, over the training horizon. Evaluation: mean absolute error.
-
-**Reward Prediction** (Gradient Boosting Regressor) — Inputs: same 14 features. Outputs: predicted maximum favorable excursion, in ATR units. Evaluation: mean absolute error.
-
-**Market Regime Classification** (KMeans clustering → Random Forest classifier) — Inputs: ADX, volatility, Bollinger bandwidth. Outputs: trending / ranging / volatile. Evaluation: accuracy against cluster-derived labels.
-
-All six are trained per symbol/interval combination and versioned locally under `backend/models/`.
+Unchanged from Module 7. This module adds no new models — it combines their outputs.
 
 ---
 
 # Feature Engineering
 
-Unchanged from Module 6. The AI Engine consumes a derived 14-column ATR-normalized feature set (`rsi_14`, `macd`, `macd_signal`, `macd_histogram`, `adx_14`, `plus_di_14`, `minus_di_14`, `volatility`, `momentum`, `bollinger_bandwidth`, `close_to_ema_atr`, `close_to_vwap_atr`, `swing_high_flag`, `swing_low_flag`) built from the full feature set in `dataset_builder.row_to_ml_features`.
+Unchanged from Module 7.
 
 ---
 
 # Environment Variables
 
-Unchanged from Module 4, plus:
-MODEL_STORAGE_PATH - required, defaults to `./models`, git-ignored
+Unchanged from Module 7.
 
 ---
 
 # Configuration Files
 
-Unchanged from Module 4.
+Unchanged from Module 7.
 
 ---
 
@@ -145,13 +131,13 @@ No Docker commands are used.
 Unit tests: Not yet added
 Integration tests: Not yet added
 Coverage: 0%
-Pending tests: dataset labeling correctness (no-lookahead, stop-vs-target ordering), train/serve feature parity
+Pending tests: threshold-boundary behavior (confidence/RR exactly at the cutoff), missing-model graceful degradation
 
 ---
 
 # Local Development
 
-See Local Testing & Running section above. `brew install libomp` is a one-time prerequisite for XGBoost/LightGBM on macOS.
+See Local Testing & Running section above.
 
 ---
 
@@ -166,13 +152,13 @@ Production readiness: Not production ready
 
 # Security
 
-Training is admin-only. No dynamic code execution or user-controlled file paths anywhere in the ML pipeline. Model artifacts are git-ignored, generated locally, never fetched from an external source.
+No new attack surface. Reuses existing permission gates and persistence patterns.
 
 ---
 
 # Performance
 
-Training runs synchronously in-request; fine at current data volumes (seconds per full six-model training run). Flagged for background-job treatment if dataset sizes grow.
+Eliminated a redundant candle/feature fetch by refactoring `predict_market_use_case` into a shared `predict_market_with_features` function, reused by both the `/ai/predict` endpoint and this module's recommendation flow.
 
 ---
 
@@ -184,23 +170,22 @@ Market session detection does not account for Daylight Saving Time (carried over
 
 # Technical Debt
 
-- Risk/Reward/Confidence models are trained assuming a long-direction entry; short-direction values are expected to be used mirrored by the Decision Engine (Phase 8) rather than trained as separate models. Revisit if backtesting shows meaningful long/short asymmetry.
-- Training is synchronous within the request; move to a background job if it becomes slow at larger data volumes.
-- No automated tests yet for dataset labeling correctness.
-- PyTorch and Stable-Baselines3 deliberately deferred (see Free/Open-Source Validation) — revisit once enough historical data and a paper-trading environment exist, respectively.
+- `MIN_CONFIDENCE_THRESHOLD` (55%) and `MIN_REWARD_RISK_RATIO` (1.2) are hardcoded constants; making these configurable (per-user risk tolerance, or admin-tunable) is a reasonable future improvement once the dashboard (Phase 11) exists to expose them.
+- No automated tests yet for exact threshold-boundary behavior.
+- Reasoning templates are in English only; internationalization is out of scope for now.
 
 ---
 
 # Future Improvements
 
-Deep learning models (PyTorch) once data volume justifies it. Reinforcement learning (Stable-Baselines3) once Phase 9's paper trading environment exists to train against. Background-job training via Celery.
+Configurable confidence/reward-risk thresholds. Multi-symbol batch recommendations. Historical recommendation accuracy tracking (comparing past `no_trade`/`long`/`short` calls against what actually happened) once enough signals have accumulated.
 
 ---
 
 # Next Module
 
-Module: Phase 8 - Decision Engine
+Module: Phase 9 - Paper Trading
 
-Objectives: Combine the six raw model predictions from this module into a single explainable recommendation — trend, confidence, supporting indicators, risk level, expected reward, reasoning, alternative scenarios, and invalidation conditions — never a bare BUY/SELL, populating a richer `signals` record than Phase 6's rule-based ones.
+Objectives: A virtual portfolio, trade execution simulator, performance tracking, and trade journal — turning Phase 8's recommendations (and Phase 6's backtested strategies) into simulated live positions with `is_paper = true` in the `trades` table.
 
-Expected deliverables: A decision engine service that combines AI Engine outputs, a recommendation DTO enforcing the project's explainability requirements, and a REST endpoint.
+Expected deliverables: Portfolio balance tracking, simulated order execution against live prices from Phase 3, position management (open/close/stop/target), and a paper trading REST API.
