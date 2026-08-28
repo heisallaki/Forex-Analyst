@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Card, CardContent, Chip, CircularProgress, Alert } from "@mui/material";
+import { Box, Typography, Card, CardContent, Chip, Alert } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useNavigate } from "react-router-dom";
 import { getMarketStatus } from "@/features/market/api/marketApi";
 import { MarketStatus } from "@/features/market/types";
 import { SignalListItem, listSignals } from "@/features/signals/api/signalsApi";
 import { Portfolio, PortfolioPerformance, getPortfolioPerformance, listPortfolios } from "@/features/paper/api/paperApi";
+import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 
 export function DashboardPage() {
   const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null);
@@ -32,21 +33,24 @@ export function DashboardPage() {
   }, []);
 
   if (loading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingSkeleton />;
   }
 
+  const goTo = (path: string) => () => navigate(path);
+  const onEnterKey = (path: string) => (event: React.KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      navigate(path);
+    }
+  };
+
   return (
-    <Box sx={{ p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <Typography variant="h4">Dashboard</Typography>
       {error && <Alert severity="error">{error}</Alert>}
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ cursor: "pointer" }} onClick={() => navigate("/markets")}>
+          <Card sx={{ cursor: "pointer" }} onClick={goTo("/markets")} onKeyDown={onEnterKey("/markets")} role="button" tabIndex={0}>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
                 Active sessions
@@ -55,27 +59,35 @@ export function DashboardPage() {
                 {marketStatus?.active_sessions.map((session) => (
                   <Chip key={session} label={session} size="small" color="primary" variant="outlined" />
                 ))}
+                {marketStatus?.active_sessions.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    No sessions currently open
+                  </Typography>
+                )}
               </Box>
             </CardContent>
           </Card>
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ cursor: "pointer" }} onClick={() => navigate("/paper")}>
+          <Card sx={{ cursor: "pointer" }} onClick={goTo("/paper")} onKeyDown={onEnterKey("/paper")} role="button" tabIndex={0}>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
                 {portfolio ? portfolio.name : "No portfolio yet"}
               </Typography>
               <Typography variant="h5">{performance ? `$${performance.current_balance.toFixed(2)}` : "—"}</Typography>
               {performance && (
-                <Typography variant="body2" color={performance.return_pct >= 0 ? "success.main" : "error.main"}>
-                  {performance.return_pct.toFixed(2)}% return
-                </Typography>
+                <Chip
+                  size="small"
+                  sx={{ mt: 1 }}
+                  color={performance.return_pct >= 0 ? "success" : "error"}
+                  label={`${performance.return_pct >= 0 ? "+" : ""}${performance.return_pct.toFixed(2)}%`}
+                />
               )}
             </CardContent>
           </Card>
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ cursor: "pointer" }} onClick={() => navigate("/signals")}>
+          <Card sx={{ cursor: "pointer" }} onClick={goTo("/signals")} onKeyDown={onEnterKey("/signals")} role="button" tabIndex={0}>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
                 Recent signals
@@ -94,7 +106,15 @@ export function DashboardPage() {
           {signals.map((signal) => (
             <Box
               key={signal.id}
-              sx={{ display: "flex", gap: 2, alignItems: "center", py: 1, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+              sx={{
+                display: "flex",
+                gap: 2,
+                alignItems: "center",
+                py: 1.2,
+                flexWrap: "wrap",
+                borderBottom: "1px solid",
+                borderColor: "divider"
+              }}
             >
               <Typography sx={{ minWidth: 100 }}>{signal.symbol}</Typography>
               <Chip
@@ -105,12 +125,14 @@ export function DashboardPage() {
               <Typography variant="body2" color="text.secondary">
                 {(signal.confidence * 100).toFixed(0)}% confidence
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: "auto" }}>
+              <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: "auto" } }}>
                 {new Date(signal.created_at).toLocaleString()}
               </Typography>
             </Box>
           ))}
-          {signals.length === 0 && <Typography color="text.secondary">No signals yet.</Typography>}
+          {signals.length === 0 && (
+            <Typography color="text.secondary">No signals yet — run a backtest or check AI Analysis to generate one.</Typography>
+          )}
         </CardContent>
       </Card>
     </Box>

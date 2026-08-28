@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, CircularProgress, Alert } from "@mui/material";
+import { Box, Typography, Alert } from "@mui/material";
 import { getMarketStatus } from "@/features/market/api/marketApi";
 import { useMarketSocket } from "@/features/market/hooks/useMarketSocket";
 import { PriceTicker } from "@/features/market/components/PriceTicker";
 import { SessionBadge } from "@/features/market/components/SessionBadge";
 import { MarketStatus } from "@/features/market/types";
+import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 
 export function MarketsPage() {
   const [status, setStatus] = useState<MarketStatus | null>(null);
@@ -20,23 +21,19 @@ export function MarketsPage() {
   }, []);
 
   if (loading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingSkeleton />;
   }
 
   if (error || !status) {
     return (
-      <Box sx={{ p: 4 }}>
+      <Box sx={{ p: { xs: 2, sm: 4 } }}>
         <Alert severity="error">{error || "Could not load market status."}</Alert>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <Typography variant="h4">Markets</Typography>
       <SessionBadge activeSessions={status.active_sessions} />
       <PriceTicker instruments={status.instruments} ticks={ticks} />
