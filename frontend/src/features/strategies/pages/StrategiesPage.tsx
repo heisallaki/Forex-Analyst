@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
-import { Box, List, ListItem, ListItemText, Chip, Button, Typography } from "@mui/material";
+import { Box, List, ListItem, ListItemText, Chip, Button, Typography, Tooltip } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { StrategyListItem, listStrategies } from "@/features/strategies/api/strategiesApi";
+import { STRATEGY_PRESETS } from "@/features/strategies/strategyPresets";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 import { useToast } from "@/shared/ui/ToastProvider";
 
 export function StrategiesPage() {
-  const [strategies, setStrategies] = useState<StrategyListItem[]>([]);
+  const [dbStrategies, setDbStrategies] = useState<StrategyListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
   useEffect(() => {
     listStrategies()
-      .then(setStrategies)
+      .then(setDbStrategies)
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
   }, []);
@@ -27,24 +28,52 @@ export function StrategiesPage() {
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 2 }}>
       <PageHeader
         title="Strategies"
-        subtitle="Every strategy created through backtesting"
+        subtitle="The full strategy library — genuinely implemented, partial, and not-yet-possible"
         action={
           <Button variant="contained" onClick={() => navigate("/backtest")}>
-            Run a new backtest
+            Run a backtest
           </Button>
         }
       />
       <List>
-        {strategies.map((strategy) => (
-          <ListItem key={strategy.id} divider>
-            <ListItemText primary={strategy.name} secondary={strategy.description || "No description"} />
-            <Chip label={strategy.is_active ? "active" : "inactive"} color={strategy.is_active ? "success" : "default"} />
-          </ListItem>
-        ))}
+        {STRATEGY_PRESETS.map((preset) => {
+          const dbMatch = dbStrategies.find((strategy) => strategy.name === preset.strategyName);
+          let statusLabel = "Not yet tested";
+          let color: "success" | "warning" | "default" | "error" = "default";
+          if (preset.status === "not_implemented") {
+            statusLabel = "Not implemented";
+            color = "error";
+          } else if (dbMatch?.is_active) {
+            statusLabel = "Active";
+            color = "success";
+          } else if (preset.status === "partial") {
+            statusLabel = dbMatch ? "Active (partial)" : "Not yet tested (partial)";
+            color = dbMatch ? "success" : "warning";
+          }
+          return (
+            <ListItem key={preset.key} divider alignItems="flex-start">
+              <ListItemText
+                primary={preset.displayName}
+                secondary={
+                  <>
+                    <Typography component="span" variant="body2" color="text.secondary">
+                      {preset.description}
+                    </Typography>
+                    {preset.limitationNote && (
+                      <Typography component="span" variant="caption" color="warning.main" sx={{ display: "block", mt: 0.5 }}>
+                        {preset.limitationNote}
+                      </Typography>
+                    )}
+                  </>
+                }
+              />
+              <Tooltip title={preset.status === "not_implemented" ? preset.limitationNote ?? "" : ""}>
+                <Chip label={statusLabel} color={color} />
+              </Tooltip>
+            </ListItem>
+          );
+        })}
       </List>
-      {strategies.length === 0 && (
-        <Typography color="text.secondary">No strategies yet — run a backtest to create one.</Typography>
-      )}
     </Box>
   );
 }

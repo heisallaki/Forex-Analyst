@@ -20,7 +20,16 @@ class Settings(BaseSettings):
     TWELVE_DATA_API_KEY: str
     TWELVE_DATA_REST_URL: str = "https://api.twelvedata.com"
     TWELVE_DATA_WS_URL: str = "wss://ws.twelvedata.com/v1/quotes/price"
-    MARKET_INSTRUMENTS: list[str] = ["EUR/USD", "GBP/USD", "USD/JPY", "XAU/USD"]
+    MARKET_INSTRUMENTS: list[str] = [
+        "EUR/USD",
+        "GBP/USD",
+        "USD/JPY",
+        "USD/CHF",
+        "AUD/USD",
+        "USD/CAD",
+        "NZD/USD",
+        "XAU/USD",
+    ]
     MODEL_STORAGE_PATH: str = "./models"
     EXECUTION_ENABLED: bool = False
     EXECUTION_MAX_POSITION_SIZE: float = 10000.0

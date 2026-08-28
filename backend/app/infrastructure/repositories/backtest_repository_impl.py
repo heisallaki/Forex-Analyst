@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,19 +12,29 @@ from app.infrastructure.database.models.strategy_model import StrategyModel
 from app.infrastructure.database.models.trade_model import TradeModel
 
 
+def _signal_to_entity(model: SignalModel) -> Signal:
+    return Signal(
+        id=model.id,
+        strategy_id=model.strategy_id,
+        symbol=model.symbol,
+        direction=model.direction,
+        confidence=model.confidence,
+        reasoning=model.reasoning,
+        created_at=model.created_at,
+        user_id=model.user_id,
+        hidden_at=model.hidden_at,
+    )
+
+
 class SqlAlchemyBacktestRepository(BacktestRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_or_create_strategy(
-        self, name: str, description: str | None, parameters: dict
-    ) -> Strategy:
+    async def get_or_create_strategy(self, name: str, description: str | None, parameters: dict) -> Strategy:
         result = await self.session.execute(select(StrategyModel).where(StrategyModel.name == name))
         model = result.scalar_one_or_none()
         if model is None:
-            model = StrategyModel(
-                name=name, description=description, parameters=parameters, is_active=False
-            )
+            model = StrategyModel(name=name, description=description, parameters=parameters, is_active=False)
             self.session.add(model)
             await self.session.commit()
             await self.session.refresh(model)
@@ -37,6 +50,7 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         model = SignalModel(
             id=signal.id,
             strategy_id=signal.strategy_id,
+            user_id=signal.user_id,
             symbol=signal.symbol,
             direction=signal.direction,
             confidence=signal.confidence,
@@ -45,15 +59,7 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         self.session.add(model)
         await self.session.commit()
         await self.session.refresh(model)
-        return Signal(
-            id=model.id,
-            strategy_id=model.strategy_id,
-            symbol=model.symbol,
-            direction=model.direction,
-            confidence=model.confidence,
-            reasoning=model.reasoning,
-            created_at=model.created_at,
-        )
+        return _signal_to_entity(model)
 
     async def save_trade(self, trade: Trade) -> Trade:
         model = TradeModel(
@@ -89,29 +95,56 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         await self.session.commit()
         return len(models)
 
-    async def list_signals(self, symbol: str | None, limit: int) -> list[Signal]:
+    async def list_signals(self, symbol: str | None, limit: int, include_hidden: bool) -> list[Signal]:
         query = select(SignalModel)
         if symbol is not None:
             query = query.where(SignalModel.symbol == symbol)
+        if not include_hidden:
+            query = query.where(SignalModel.hidden_at.is_(None))
         query = query.order_by(SignalModel.created_at.desc()).limit(limit)
         result = await self.session.execute(query)
-        return [
-            Signal(
-                id=model.id,
-                strategy_id=model.strategy_id,
-                symbol=model.symbol,
-                direction=model.direction,
-                confidence=model.confidence,
-                reasoning=model.reasoning,
-                created_at=model.created_at,
-            )
-            for model in result.scalars().all()
-        ]
+        return [_signal_to_entity(model) for model in result.scalars().all()]
+
+    async def set_signals_hidden(
+        self, signal_ids: list[UUID], hidden: bool, requesting_user_id: UUID, is_admin: bool
+    ) -> tuple[list[UUID], list[UUID]]:
+        result = await self.session.execute(select(SignalModel).where(SignalModel.id.in_(signal_ids)))
+        models = result.scalars().all()
+        succeeded: list[UUID] = []
+        skipped: list[UUID] = []
+        for model in models:
+            owned = model.user_id is not None and model.user_id == requesting_user_id
+            if is_admin or owned:
+                model.hidden_at = datetime.now(timezone.utc) if hidden else None
+                succeeded.append(model.id)
+            else:
+                skipped.append(model.id)
+        await self.session.commit()
+        found_ids = {model.id for model in models}
+        skipped.extend([signal_id for signal_id in signal_ids if signal_id not in found_ids])
+        return succeeded, skipped
+
+    async def delete_signals(
+        self, signal_ids: list[UUID], requesting_user_id: UUID, is_admin: bool
+    ) -> tuple[list[UUID], list[UUID]]:
+        result = await self.session.execute(select(SignalModel).where(SignalModel.id.in_(signal_ids)))
+        models = result.scalars().all()
+        succeeded: list[UUID] = []
+        skipped: list[UUID] = []
+        for model in models:
+            owned = model.user_id is not None and model.user_id == requesting_user_id
+            if is_admin or owned:
+                await self.session.delete(model)
+                succeeded.append(model.id)
+            else:
+                skipped.append(model.id)
+        await self.session.commit()
+        found_ids = {model.id for model in models}
+        skipped.extend([signal_id for signal_id in signal_ids if signal_id not in found_ids])
+        return succeeded, skipped
 
     async def list_strategies(self) -> list[Strategy]:
-        result = await self.session.execute(
-            select(StrategyModel).order_by(StrategyModel.created_at.desc())
-        )
+        result = await self.session.execute(select(StrategyModel).order_by(StrategyModel.created_at.desc()))
         return [
             Strategy(
                 id=model.id,
@@ -122,3 +155,10 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
             )
             for model in result.scalars().all()
         ]
+
+    async def activate_strategy(self, strategy_id: UUID) -> None:
+        result = await self.session.execute(select(StrategyModel).where(StrategyModel.id == strategy_id))
+        model = result.scalar_one_or_none()
+        if model is not None and not model.is_active:
+            model.is_active = True
+            await self.session.commit()

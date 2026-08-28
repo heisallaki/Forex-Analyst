@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
+from uuid import UUID
 
 from app.domain.entities.backtest import Metric, Signal, Strategy, Trade
 
 
 class BacktestRepository(ABC):
     @abstractmethod
-    async def get_or_create_strategy(
-        self, name: str, description: str | None, parameters: dict
-    ) -> Strategy:
+    async def get_or_create_strategy(self, name: str, description: str | None, parameters: dict) -> Strategy:
         raise NotImplementedError
 
     @abstractmethod
@@ -23,9 +22,25 @@ class BacktestRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def list_signals(self, symbol: str | None, limit: int) -> list[Signal]:
+    async def list_signals(self, symbol: str | None, limit: int, include_hidden: bool) -> list[Signal]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def set_signals_hidden(
+        self, signal_ids: list[UUID], hidden: bool, requesting_user_id: UUID, is_admin: bool
+    ) -> tuple[list[UUID], list[UUID]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete_signals(
+        self, signal_ids: list[UUID], requesting_user_id: UUID, is_admin: bool
+    ) -> tuple[list[UUID], list[UUID]]:
         raise NotImplementedError
 
     @abstractmethod
     async def list_strategies(self) -> list[Strategy]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def activate_strategy(self, strategy_id: UUID) -> None:
         raise NotImplementedError

@@ -21,6 +21,8 @@ class Signal:
     confidence: float
     reasoning: dict
     created_at: datetime
+    user_id: UUID | None = None
+    hidden_at: datetime | None = None
 
 
 @dataclass

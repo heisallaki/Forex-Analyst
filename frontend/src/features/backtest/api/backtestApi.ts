@@ -3,7 +3,8 @@ import { httpPost } from "@/shared/api/httpClient";
 export interface RuleCondition {
   field: string;
   operator: string;
-  value: number;
+  value?: number | string;
+  compare_field?: string;
 }
 
 export interface RuleGroup {

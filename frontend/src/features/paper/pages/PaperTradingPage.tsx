@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   CardContent,
+  Grid2 as Grid,
   TextField,
   Button,
   MenuItem,
@@ -12,9 +13,11 @@ import {
   TableCell,
   TableBody,
   Chip,
-  Typography
+  Typography,
+  Tooltip,
+  IconButton
 } from "@mui/material";
-import Grid from "@mui/material/Grid2";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Portfolio,
   PortfolioPerformance,
@@ -57,6 +60,7 @@ export function PaperTradingPage() {
     loadPortfolios()
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadPortfolioDetail = async (portfolioId: string) => {
@@ -72,6 +76,7 @@ export function PaperTradingPage() {
     if (selectedPortfolioId) {
       loadPortfolioDetail(selectedPortfolioId).catch((err) => showToast((err as Error).message, "error"));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPortfolioId]);
 
   const handleCreatePortfolio = async () => {
@@ -128,19 +133,26 @@ export function PaperTradingPage() {
         <CardContent>
           <Grid container spacing={2} alignItems="center">
             <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                select
-                fullWidth
-                label="Portfolio"
-                value={selectedPortfolioId}
-                onChange={(e) => setSelectedPortfolioId(e.target.value)}
-              >
-                {portfolios.map((portfolio) => (
-                  <MenuItem key={portfolio.id} value={portfolio.id}>
-                    {portfolio.name} (${portfolio.current_balance.toFixed(2)})
-                  </MenuItem>
-                ))}
-              </TextField>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Portfolio"
+                  value={selectedPortfolioId}
+                  onChange={(e) => setSelectedPortfolioId(e.target.value)}
+                >
+                  {portfolios.map((portfolio) => (
+                    <MenuItem key={portfolio.id} value={portfolio.id}>
+                      {portfolio.name} (${portfolio.current_balance.toFixed(2)})
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <Tooltip title="A portfolio is a virtual account with its own starting balance. Every trade you open must belong to a portfolio, so create one first if the list is empty — nothing else on this page will work until it exists.">
+                  <IconButton size="small" aria-label="What is a portfolio?">
+                    <InfoOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <TextField

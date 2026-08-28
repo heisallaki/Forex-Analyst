@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import ssl
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import certifi
 import websockets
@@ -36,7 +36,7 @@ async def _persist_tick(payload: dict) -> None:
         tick = Tick(
             symbol=symbol,
             price=float(price),
-            timestamp=datetime.fromtimestamp(int(raw_timestamp), tz=UTC),
+            timestamp=datetime.fromtimestamp(int(raw_timestamp), tz=timezone.utc),
         )
         async with AsyncSessionLocal() as session:
             repository = SqlAlchemyMarketRepository(session)
@@ -62,7 +62,22 @@ async def run_market_stream() -> None:
                         payload = json.loads(message)
                     except json.JSONDecodeError:
                         continue
-                    if payload.get("event") == "price":
+
+                    event = payload.get("event")
+
+                    if event == "subscribe-status":
+                        if payload.get("status") == "error":
+                            logger.error("Twelve Data rejected subscription: %s", payload)
+                        else:
+                            logger.info(
+                                "Twelve Data subscription status: %s | success=%s fails=%s",
+                                payload.get("status"),
+                                payload.get("success"),
+                                payload.get("fails"),
+                            )
+                        continue
+
+                    if event == "price":
                         await redis_client.publish(MARKET_TICKS_CHANNEL, json.dumps(payload))
                         symbol = payload.get("symbol")
                         price = payload.get("price")

@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
-from uuid import uuid4
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 
 from app.application.dto.backtest_dto import (
     BacktestIntervalResult,
@@ -30,8 +30,8 @@ def _to_rule_group(schema) -> RuleGroup | None:
     return RuleGroup(
         match=schema.match,
         conditions=[
-            Condition(field=condition.field, operator=condition.operator, value=condition.value)
-            for condition in schema.conditions
+            Condition(field=c.field, operator=c.operator, value=c.value, compare_field=c.compare_field)
+            for c in schema.conditions
         ],
     )
 
@@ -41,6 +41,7 @@ async def run_backtest_use_case(
     market_repository: MarketRepository,
     backtest_repository: BacktestRepository,
     client: TwelveDataClient,
+    user_id: UUID,
 ) -> BacktestRunResponse:
     strategy_entity = await backtest_repository.get_or_create_strategy(
         name=payload.strategy_name,
@@ -102,6 +103,7 @@ async def run_backtest_use_case(
                     "take_profit_atr_multiple": payload.take_profit_atr_multiple,
                 },
                 created_at=simulated.opened_at,
+                user_id=user_id,
             )
             saved_signal = await backtest_repository.save_signal(signal)
 
@@ -137,17 +139,11 @@ async def run_backtest_use_case(
             )
 
         recorded_timestamp = (
-            simulated_trades[-1].closed_at if simulated_trades else datetime.now(UTC)
+            simulated_trades[-1].closed_at if simulated_trades else datetime.now(timezone.utc)
         )
-        metric_tags = {
-            "strategy": payload.strategy_name,
-            "symbol": payload.symbol,
-            "interval": interval,
-        }
+        metric_tags = {"strategy": payload.strategy_name, "symbol": payload.symbol, "interval": interval}
         metrics = [
-            Metric(
-                id=uuid4(), name=name, value=value, tags=metric_tags, recorded_at=recorded_timestamp
-            )
+            Metric(id=uuid4(), name=name, value=value, tags=metric_tags, recorded_at=recorded_timestamp)
             for name, value in [
                 ("win_rate", stats["win_rate"]),
                 ("profit_factor", stats["profit_factor"]),
@@ -168,6 +164,8 @@ async def run_backtest_use_case(
                 statistics=BacktestStatisticsSchema(**stats),
             )
         )
+
+    await backtest_repository.activate_strategy(strategy_entity.id)
 
     return BacktestRunResponse(
         strategy_id=str(strategy_entity.id),

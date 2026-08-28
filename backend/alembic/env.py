@@ -1,11 +1,24 @@
 import asyncio
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from alembic import context
 from app.core.config import settings
 from app.infrastructure.database.base import Base
+from app.infrastructure.database.models import (
+    ai_prediction_model,
+    candle_model,
+    log_model,
+    metric_model,
+    portfolio_model,
+    refresh_token_model,
+    signal_model,
+    strategy_model,
+    tick_model,
+    trade_model,
+    user_model,
+)
 
 config = context.config
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   TextField,
@@ -15,19 +15,38 @@ import {
   Alert,
   Typography
 } from "@mui/material";
+import { getMarketStatus } from "@/features/market/api/marketApi";
 import { PredictMarketResponse, RecommendationResponse, getPredictions, getRecommendation } from "@/features/ai/api/aiApi";
 import { useToast } from "@/shared/ui/ToastProvider";
 import { PageHeader } from "@/shared/ui/PageHeader";
+import { getPreference, setPreference } from "@/shared/utils/userPreferences";
 
-const INTERVALS = ["1min", "5min", "15min", "1h", "1day"];
+const INTERVALS = ["1min", "5min", "15min", "30min", "45min", "1h", "1day"];
 
 export function AIAnalysisPage() {
-  const [symbol, setSymbol] = useState("EUR/USD");
-  const [interval, setInterval] = useState("1min");
+  const [instruments, setInstruments] = useState<string[]>([]);
+  const [symbol, setSymbol] = useState(() => getPreference("ai_symbol", "EUR/USD"));
+  const [interval, setInterval] = useState(() => getPreference("ai_interval", "1min"));
   const [predictions, setPredictions] = useState<PredictMarketResponse | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    getMarketStatus()
+      .then((status) => setInstruments(status.instruments))
+      .catch(() => undefined);
+  }, []);
+
+  const handleSymbolChange = (value: string) => {
+    setSymbol(value);
+    setPreference("ai_symbol", value);
+  };
+
+  const handleIntervalChange = (value: string) => {
+    setInterval(value);
+    setPreference("ai_interval", value);
+  };
 
   const handleAnalyze = async () => {
     setLoading(true);
@@ -54,8 +73,14 @@ export function AIAnalysisPage() {
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <PageHeader title="AI Analysis" subtitle="Explainable predictions and recommendations, never a bare buy/sell" />
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-        <TextField label="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} sx={{ minWidth: 160 }} />
-        <TextField select label="Interval" value={interval} onChange={(e) => setInterval(e.target.value)} sx={{ minWidth: 140 }}>
+        <TextField select label="Symbol" value={symbol} onChange={(e) => handleSymbolChange(e.target.value)} sx={{ minWidth: 160 }}>
+          {instruments.map((instrument) => (
+            <MenuItem key={instrument} value={instrument}>
+              {instrument}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField select label="Interval" value={interval} onChange={(e) => handleIntervalChange(e.target.value)} sx={{ minWidth: 140 }}>
           {INTERVALS.map((value) => (
             <MenuItem key={value} value={value}>
               {value}

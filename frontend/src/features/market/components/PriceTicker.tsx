@@ -1,26 +1,38 @@
 import { Card, CardContent, Typography, Stack, Chip } from "@mui/material";
 import { PriceTick } from "@/features/market/types";
+import { MarketSocketStatus } from "@/features/market/hooks/useMarketSocket";
 
 interface PriceTickerProps {
   instruments: string[];
   ticks: Record<string, PriceTick>;
+  status: MarketSocketStatus;
 }
 
-export function PriceTicker({ instruments, ticks }: PriceTickerProps) {
+function badgeFor(hasTick: boolean, status: MarketSocketStatus): { label: string; color: "success" | "warning" | "default" } {
+  if (hasTick) {
+    return { label: "live", color: "success" };
+  }
+  if (status === "connecting") {
+    return { label: "connecting", color: "default" };
+  }
+  if (status === "error" || status === "closed") {
+    return { label: "reconnecting", color: "warning" };
+  }
+  return { label: "no data yet", color: "warning" };
+}
+
+export function PriceTicker({ instruments, ticks, status }: PriceTickerProps) {
   return (
     <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
       {instruments.map((symbol) => {
         const tick = ticks[symbol];
+        const badge = badgeFor(!!tick, status);
         return (
           <Card key={symbol} sx={{ minWidth: 160 }}>
             <CardContent>
               <Typography variant="subtitle2">{symbol}</Typography>
               <Typography variant="h6">{tick ? tick.price : "—"}</Typography>
-              <Chip
-                size="small"
-                label={tick ? "live" : "waiting"}
-                color={tick ? "success" : "default"}
-              />
+              <Chip size="small" label={badge.label} color={badge.color} />
             </CardContent>
           </Card>
         );

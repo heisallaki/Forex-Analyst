@@ -6,8 +6,17 @@ from pydantic import BaseModel, Field, model_validator
 
 class ConditionSchema(BaseModel):
     field: str
-    operator: Literal["lt", "lte", "gt", "gte", "eq"]
-    value: float
+    operator: Literal["lt", "lte", "gt", "gte", "eq", "neq"]
+    value: float | str | None = None
+    compare_field: str | None = None
+
+    @model_validator(mode="after")
+    def validate_value_or_compare_field(self):
+        if self.value is None and self.compare_field is None:
+            raise ValueError("Either value or compare_field must be provided")
+        if self.value is not None and self.compare_field is not None:
+            raise ValueError("Provide only one of value or compare_field, not both")
+        return self
 
 
 class RuleGroupSchema(BaseModel):
@@ -35,13 +44,9 @@ class BacktestRunRequest(BaseModel):
     @model_validator(mode="after")
     def validate_entry_rules(self):
         has_long = self.entry_long_rules is not None and len(self.entry_long_rules.conditions) > 0
-        has_short = (
-            self.entry_short_rules is not None and len(self.entry_short_rules.conditions) > 0
-        )
+        has_short = self.entry_short_rules is not None and len(self.entry_short_rules.conditions) > 0
         if not has_long and not has_short:
-            raise ValueError(
-                "At least one of entry_long_rules or entry_short_rules must have conditions"
-            )
+            raise ValueError("At least one of entry_long_rules or entry_short_rules must have conditions")
         return self
 
 
@@ -92,6 +97,17 @@ class SignalListItem(BaseModel):
     confidence: float
     reasoning: dict
     created_at: datetime
+    hidden_at: datetime | None
+    is_owner: bool
+
+
+class SignalBulkActionRequest(BaseModel):
+    signal_ids: list[str]
+
+
+class SignalBulkActionResponse(BaseModel):
+    succeeded: list[str]
+    skipped: list[str]
 
 
 class StrategyListItem(BaseModel):

@@ -5,13 +5,14 @@ import { getCandles, getMarketStatus } from "@/features/market/api/marketApi";
 import { CandlePoint, CandlestickChart } from "@/features/charts/components/CandlestickChart";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
+import { getPreference, setPreference } from "@/shared/utils/userPreferences";
 
-const INTERVALS = ["1min", "5min", "15min", "1h", "1day"];
+const INTERVALS = ["1min", "5min", "15min", "30min", "45min", "1h", "1day"];
 
 export function ChartsPage() {
   const [instruments, setInstruments] = useState<string[]>([]);
-  const [symbol, setSymbol] = useState("");
-  const [interval, setInterval] = useState("1min");
+  const [symbol, setSymbol] = useState(() => getPreference("charts_symbol", ""));
+  const [interval, setInterval] = useState(() => getPreference("charts_interval", "1min"));
   const [data, setData] = useState<CandlePoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +21,7 @@ export function ChartsPage() {
     getMarketStatus()
       .then((status) => {
         setInstruments(status.instruments);
-        if (status.instruments.length > 0) {
+        if (!symbol && status.instruments.length > 0) {
           setSymbol(status.instruments[0]);
         }
       })
@@ -49,18 +50,28 @@ export function ChartsPage() {
       .finally(() => setLoading(false));
   }, [symbol, interval]);
 
+  const handleSymbolChange = (value: string) => {
+    setSymbol(value);
+    setPreference("charts_symbol", value);
+  };
+
+  const handleIntervalChange = (value: string) => {
+    setInterval(value);
+    setPreference("charts_interval", value);
+  };
+
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <PageHeader title="Charts" subtitle="Historical candlestick data for any configured instrument" />
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-        <TextField select label="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} sx={{ minWidth: 160 }}>
+        <TextField select label="Symbol" value={symbol} onChange={(e) => handleSymbolChange(e.target.value)} sx={{ minWidth: 160 }}>
           {instruments.map((instrument) => (
             <MenuItem key={instrument} value={instrument}>
               {instrument}
             </MenuItem>
           ))}
         </TextField>
-        <TextField select label="Interval" value={interval} onChange={(e) => setInterval(e.target.value)} sx={{ minWidth: 140 }}>
+        <TextField select label="Interval" value={interval} onChange={(e) => handleIntervalChange(e.target.value)} sx={{ minWidth: 140 }}>
           {INTERVALS.map((value) => (
             <MenuItem key={value} value={value}>
               {value}

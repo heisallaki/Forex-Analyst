@@ -12,7 +12,7 @@ export function MarketsPage() {
   const [status, setStatus] = useState<MarketStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const ticks = useMarketSocket();
+  const { ticks, status: socketStatus } = useMarketSocket();
 
   useEffect(() => {
     getMarketStatus()
@@ -33,11 +33,19 @@ export function MarketsPage() {
     );
   }
 
+  const hasAnyLiveTick = Object.keys(ticks).length > 0;
+
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <PageHeader title="Markets" subtitle="Live prices across your configured instruments" />
       <SessionBadge activeSessions={status.active_sessions} />
-      <PriceTicker instruments={status.instruments} ticks={ticks} />
+      {!hasAnyLiveTick && socketStatus === "open" && (
+        <Alert severity="info">
+          Connected, but no live ticks yet. Forex markets are closed on weekends, and free-tier data plans can limit
+          how many symbols stream simultaneously. Historical candles and charts are unaffected.
+        </Alert>
+      )}
+      <PriceTicker instruments={status.instruments} ticks={ticks} status={socketStatus} />
     </Box>
   );
 }

@@ -8,7 +8,8 @@ from datetime import datetime
 class Condition:
     field: str
     operator: str
-    value: float
+    value: float | str | None = None
+    compare_field: str | None = None
 
 
 @dataclass
@@ -55,20 +56,41 @@ def _pip_size(symbol: str) -> float:
     return 0.0001
 
 
+def _coerce_for_compare(value):
+    if isinstance(value, bool):
+        return float(value)
+    return value
+
+
 def evaluate_condition(row: dict, condition: Condition) -> bool:
-    value = row.get(condition.field)
-    if value is None:
+    left = _coerce_for_compare(row.get(condition.field))
+    if left is None:
         return False
-    if condition.operator == "lt":
-        return value < condition.value
-    if condition.operator == "lte":
-        return value <= condition.value
-    if condition.operator == "gt":
-        return value > condition.value
-    if condition.operator == "gte":
-        return value >= condition.value
+
+    if condition.compare_field is not None:
+        right = _coerce_for_compare(row.get(condition.compare_field))
+    else:
+        right = condition.value
+
+    if right is None:
+        return False
+
     if condition.operator == "eq":
-        return value == condition.value
+        return left == right
+    if condition.operator == "neq":
+        return left != right
+
+    if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
+        return False
+
+    if condition.operator == "lt":
+        return left < right
+    if condition.operator == "lte":
+        return left <= right
+    if condition.operator == "gt":
+        return left > right
+    if condition.operator == "gte":
+        return left >= right
     raise ValueError(f"Unsupported operator: {condition.operator}")
 
 
@@ -118,11 +140,7 @@ def run_backtest(feature_rows: list[dict], config: BacktestConfig) -> list[Simul
 
             if exit_price is not None:
                 direction_multiplier = 1 if position["side"] == "long" else -1
-                pnl = (
-                    (exit_price - position["entry_price"])
-                    * direction_multiplier
-                    * position["quantity"]
-                )
+                pnl = (exit_price - position["entry_price"]) * direction_multiplier * position["quantity"]
                 pnl -= config.commission_per_trade
                 equity += pnl
                 trades.append(
@@ -153,9 +171,7 @@ def run_backtest(feature_rows: list[dict], config: BacktestConfig) -> list[Simul
             side = "long" if entered_long else "short"
             raw_entry = row["open"]
             entry_price = (
-                raw_entry + spread / 2 + slippage
-                if side == "long"
-                else raw_entry - spread / 2 - slippage
+                raw_entry + spread / 2 + slippage if side == "long" else raw_entry - spread / 2 - slippage
             )
             sl_distance = atr * config.stop_loss_atr_multiple
             tp_distance = atr * config.take_profit_atr_multiple
@@ -239,9 +255,7 @@ def compute_statistics(trades: list[SimulatedTrade], initial_balance: float) -> 
     trades_per_year = (len(trades) / span_days) * 365.25
 
     sharpe_ratio = (mean_return / std_return) * (trades_per_year**0.5) if std_return > 0 else None
-    sortino_ratio = (
-        (mean_return / downside_std) * (trades_per_year**0.5) if downside_std > 0 else None
-    )
+    sortino_ratio = (mean_return / downside_std) * (trades_per_year**0.5) if downside_std > 0 else None
 
     peak = equity_curve[0]
     max_drawdown_pct = 0.0
