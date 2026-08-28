@@ -5,8 +5,9 @@ import { AppRouter } from "@/app/AppRouter";
 import { ToastProvider } from "@/shared/ui/ToastProvider";
 
 export default function App() {
-  const mode = useThemeStore((state) => state.mode);
-  const theme = createAppTheme(mode);
+  const effectiveMode = useThemeStore((state) => state.effectiveMode());
+  const accentColor = useThemeStore((state) => state.accentColor);
+  const theme = createAppTheme(effectiveMode, accentColor);
 
   return (
     <ThemeProvider theme={theme}>

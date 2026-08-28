@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Card, CardContent, Chip, Alert } from "@mui/material";
+import { Box, Card, CardContent, Chip, Alert } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useNavigate } from "react-router-dom";
 import { getMarketStatus } from "@/features/market/api/marketApi";
 import { MarketStatus } from "@/features/market/types";
 import { SignalListItem, listSignals } from "@/features/signals/api/signalsApi";
 import { Portfolio, PortfolioPerformance, getPortfolioPerformance, listPortfolios } from "@/features/paper/api/paperApi";
+import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
+import { Box as MuiBox, Typography } from "@mui/material";
 
 export function DashboardPage() {
   const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null);
@@ -45,7 +47,7 @@ export function DashboardPage() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Typography variant="h4">Dashboard</Typography>
+      <PageHeader title="Dashboard" subtitle="Your trading command center" />
       {error && <Alert severity="error">{error}</Alert>}
 
       <Grid container spacing={2}>
@@ -55,7 +57,7 @@ export function DashboardPage() {
               <Typography variant="body2" color="text.secondary">
                 Active sessions
               </Typography>
-              <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+              <MuiBox sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
                 {marketStatus?.active_sessions.map((session) => (
                   <Chip key={session} label={session} size="small" color="primary" variant="outlined" />
                 ))}
@@ -64,7 +66,7 @@ export function DashboardPage() {
                     No sessions currently open
                   </Typography>
                 )}
-              </Box>
+              </MuiBox>
             </CardContent>
           </Card>
         </Grid>
@@ -104,7 +106,7 @@ export function DashboardPage() {
             Latest signals
           </Typography>
           {signals.map((signal) => (
-            <Box
+            <MuiBox
               key={signal.id}
               sx={{
                 display: "flex",
@@ -128,7 +130,7 @@ export function DashboardPage() {
               <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: "auto" } }}>
                 {new Date(signal.created_at).toLocaleString()}
               </Typography>
-            </Box>
+            </MuiBox>
           ))}
           {signals.length === 0 && (
             <Typography color="text.secondary">No signals yet — run a backtest or check AI Analysis to generate one.</Typography>

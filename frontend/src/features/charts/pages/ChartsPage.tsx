@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, TextField, MenuItem, CircularProgress, Alert } from "@mui/material";
+import { Box, TextField, MenuItem, Alert } from "@mui/material";
 import { Time } from "lightweight-charts";
 import { getCandles, getMarketStatus } from "@/features/market/api/marketApi";
 import { CandlePoint, CandlestickChart } from "@/features/charts/components/CandlestickChart";
+import { PageHeader } from "@/shared/ui/PageHeader";
+import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 
 const INTERVALS = ["1min", "5min", "15min", "1h", "1day"];
 
@@ -48,9 +50,9 @@ export function ChartsPage() {
   }, [symbol, interval]);
 
   return (
-    <Box sx={{ p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Typography variant="h4">Charts</Typography>
-      <Box sx={{ display: "flex", gap: 2 }}>
+    <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
+      <PageHeader title="Charts" subtitle="Historical candlestick data for any configured instrument" />
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         <TextField select label="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} sx={{ minWidth: 160 }}>
           {instruments.map((instrument) => (
             <MenuItem key={instrument} value={instrument}>
@@ -67,7 +69,7 @@ export function ChartsPage() {
         </TextField>
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
-      {loading ? <CircularProgress /> : <CandlestickChart data={data} />}
+      {loading ? <PageLoadingSkeleton variant="table" /> : <CandlestickChart data={data} />}
     </Box>
   );
 }

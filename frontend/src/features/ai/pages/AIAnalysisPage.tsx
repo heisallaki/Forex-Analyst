@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   Box,
-  Typography,
   TextField,
   MenuItem,
   Button,
@@ -13,10 +12,12 @@ import {
   List,
   ListItem,
   ListItemText,
-  Alert
+  Alert,
+  Typography
 } from "@mui/material";
 import { PredictMarketResponse, RecommendationResponse, getPredictions, getRecommendation } from "@/features/ai/api/aiApi";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { PageHeader } from "@/shared/ui/PageHeader";
 
 const INTERVALS = ["1min", "5min", "15min", "1h", "1day"];
 
@@ -51,7 +52,7 @@ export function AIAnalysisPage() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Typography variant="h4">AI Analysis</Typography>
+      <PageHeader title="AI Analysis" subtitle="Explainable predictions and recommendations, never a bare buy/sell" />
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
         <TextField label="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} sx={{ minWidth: 160 }} />
         <TextField select label="Interval" value={interval} onChange={(e) => setInterval(e.target.value)} sx={{ minWidth: 140 }}>

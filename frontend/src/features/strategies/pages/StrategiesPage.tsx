@@ -1,38 +1,39 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, List, ListItem, ListItemText, Chip, CircularProgress, Alert, Button } from "@mui/material";
+import { Box, List, ListItem, ListItemText, Chip, Button, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { StrategyListItem, listStrategies } from "@/features/strategies/api/strategiesApi";
+import { PageHeader } from "@/shared/ui/PageHeader";
+import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
+import { useToast } from "@/shared/ui/ToastProvider";
 
 export function StrategiesPage() {
   const [strategies, setStrategies] = useState<StrategyListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useEffect(() => {
     listStrategies()
       .then(setStrategies)
-      .catch((err) => setError((err as Error).message))
+      .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingSkeleton variant="table" />;
   }
 
   return (
-    <Box sx={{ p: 4, display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4">Strategies</Typography>
-        <Button variant="contained" onClick={() => navigate("/backtest")}>
-          Run a new backtest
-        </Button>
-      </Box>
-      {error && <Alert severity="error">{error}</Alert>}
+    <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 2 }}>
+      <PageHeader
+        title="Strategies"
+        subtitle="Every strategy created through backtesting"
+        action={
+          <Button variant="contained" onClick={() => navigate("/backtest")}>
+            Run a new backtest
+          </Button>
+        }
+      />
       <List>
         {strategies.map((strategy) => (
           <ListItem key={strategy.id} divider>

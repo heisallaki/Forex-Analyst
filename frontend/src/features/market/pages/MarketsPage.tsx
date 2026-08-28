@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Alert } from "@mui/material";
+import { Box, Alert } from "@mui/material";
 import { getMarketStatus } from "@/features/market/api/marketApi";
 import { useMarketSocket } from "@/features/market/hooks/useMarketSocket";
 import { PriceTicker } from "@/features/market/components/PriceTicker";
 import { SessionBadge } from "@/features/market/components/SessionBadge";
 import { MarketStatus } from "@/features/market/types";
+import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 
 export function MarketsPage() {
@@ -34,7 +35,7 @@ export function MarketsPage() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Typography variant="h4">Markets</Typography>
+      <PageHeader title="Markets" subtitle="Live prices across your configured instruments" />
       <SessionBadge activeSessions={status.active_sessions} />
       <PriceTicker instruments={status.instruments} ticks={ticks} />
     </Box>

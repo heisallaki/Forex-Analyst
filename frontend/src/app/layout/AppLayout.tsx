@@ -39,7 +39,8 @@ const NAV_ITEMS = [
 
 export function AppLayout() {
   const { user, refreshToken, clearSession } = useAuthStore();
-  const { mode, toggleMode } = useThemeStore();
+  const effectiveMode = useThemeStore((state) => state.effectiveMode());
+  const toggleMode = useThemeStore((state) => state.toggleMode);
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -118,9 +119,9 @@ export function AppLayout() {
               </IconButton>
             )}
             <Box sx={{ flexGrow: 1 }} />
-            <Tooltip title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+            <Tooltip title={effectiveMode === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
               <IconButton aria-label="Toggle color mode" onClick={toggleMode} color="inherit">
-                {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+                {effectiveMode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
             </Tooltip>
             {user && (

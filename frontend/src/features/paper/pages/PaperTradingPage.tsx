@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
-  Typography,
   Card,
   CardContent,
   TextField,
@@ -13,8 +12,7 @@ import {
   TableCell,
   TableBody,
   Chip,
-  Alert,
-  CircularProgress
+  Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import {
@@ -28,6 +26,9 @@ import {
   listTrades,
   openTrade
 } from "@/features/paper/api/paperApi";
+import { PageHeader } from "@/shared/ui/PageHeader";
+import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
+import { useToast } from "@/shared/ui/ToastProvider";
 
 export function PaperTradingPage() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -41,23 +42,22 @@ export function PaperTradingPage() {
   const [riskAmount, setRiskAmount] = useState(100);
   const [stopLoss, setStopLoss] = useState<number | "">("");
   const [takeProfit, setTakeProfit] = useState<number | "">("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
-  const loadPortfolios = useCallback(async () => {
+  const loadPortfolios = async () => {
     const result = await listPortfolios();
     setPortfolios(result);
-
     if (result.length > 0 && !selectedPortfolioId) {
-    setSelectedPortfolioId(result[0].id);
+      setSelectedPortfolioId(result[0].id);
     }
-}, [selectedPortfolioId]);
+  };
 
-useEffect(() => {
-  loadPortfolios()
-    .catch((err) => setError((err as Error).message))
-    .finally(() => setLoading(false));
-}, [loadPortfolios]);
+  useEffect(() => {
+    loadPortfolios()
+      .catch((err) => showToast((err as Error).message, "error"))
+      .finally(() => setLoading(false));
+  }, []);
 
   const loadPortfolioDetail = async (portfolioId: string) => {
     const [performanceResult, tradesResult] = await Promise.all([
@@ -70,27 +70,26 @@ useEffect(() => {
 
   useEffect(() => {
     if (selectedPortfolioId) {
-      loadPortfolioDetail(selectedPortfolioId).catch((err) => setError((err as Error).message));
+      loadPortfolioDetail(selectedPortfolioId).catch((err) => showToast((err as Error).message, "error"));
     }
   }, [selectedPortfolioId]);
 
   const handleCreatePortfolio = async () => {
-    setError(null);
     try {
       const created = await createPortfolio(newPortfolioName, newPortfolioBalance);
       await loadPortfolios();
       setSelectedPortfolioId(created.id);
+      showToast("Portfolio created", "success");
     } catch (err) {
-      setError((err as Error).message);
+      showToast((err as Error).message, "error");
     }
   };
 
   const handleOpenTrade = async () => {
     if (!selectedPortfolioId || stopLoss === "") {
-      setError("Select a portfolio and provide a stop loss to size the trade by risk.");
+      showToast("Select a portfolio and provide a stop loss to size the trade by risk.", "warning");
       return;
     }
-    setError(null);
     try {
       await openTrade({
         portfolio_id: selectedPortfolioId,
@@ -101,33 +100,29 @@ useEffect(() => {
         take_profit: takeProfit === "" ? undefined : Number(takeProfit)
       });
       await loadPortfolioDetail(selectedPortfolioId);
+      showToast("Trade opened", "success");
     } catch (err) {
-      setError((err as Error).message);
+      showToast((err as Error).message, "error");
     }
   };
 
   const handleCloseTrade = async (tradeId: string) => {
-    setError(null);
     try {
       await closeTrade(tradeId);
       await loadPortfolioDetail(selectedPortfolioId);
+      showToast("Trade closed", "success");
     } catch (err) {
-      setError((err as Error).message);
+      showToast((err as Error).message, "error");
     }
   };
 
   if (loading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingSkeleton />;
   }
 
   return (
-    <Box sx={{ p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Typography variant="h4">Paper Trading</Typography>
-      {error && <Alert severity="error">{error}</Alert>}
+    <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
+      <PageHeader title="Paper Trading" subtitle="Simulate trades against live prices with a virtual portfolio" />
 
       <Card>
         <CardContent>
@@ -172,6 +167,16 @@ useEffect(() => {
           </Grid>
         </CardContent>
       </Card>
+
+      {portfolios.length === 0 && (
+        <Card>
+          <CardContent>
+            <Typography color="text.secondary">
+              You don't have a portfolio yet — create one above to start paper trading.
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
 
       {performance && (
         <Card>
@@ -273,40 +278,47 @@ useEffect(() => {
           <Typography variant="h6" gutterBottom>
             Trade journal
           </Typography>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Symbol</TableCell>
-                <TableCell>Side</TableCell>
-                <TableCell>Entry</TableCell>
-                <TableCell>Exit</TableCell>
-                <TableCell>PnL</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {trades.map((trade) => (
-                <TableRow key={trade.id}>
-                  <TableCell>{trade.symbol}</TableCell>
-                  <TableCell>{trade.side}</TableCell>
-                  <TableCell>{trade.entry_price.toFixed(5)}</TableCell>
-                  <TableCell>{trade.exit_price !== null ? trade.exit_price.toFixed(5) : "—"}</TableCell>
-                  <TableCell>{trade.pnl !== null ? trade.pnl.toFixed(2) : "—"}</TableCell>
-                  <TableCell>
-                    <Chip size="small" label={trade.status} color={trade.status === "open" ? "warning" : "default"} />
-                  </TableCell>
-                  <TableCell>
-                    {trade.status === "open" && (
-                      <Button size="small" onClick={() => handleCloseTrade(trade.id)}>
-                        Close
-                      </Button>
-                    )}
-                  </TableCell>
+          <Box sx={{ overflowX: "auto" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Symbol</TableCell>
+                  <TableCell>Side</TableCell>
+                  <TableCell>Entry</TableCell>
+                  <TableCell>Exit</TableCell>
+                  <TableCell>PnL</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {trades.map((trade) => (
+                  <TableRow key={trade.id}>
+                    <TableCell>{trade.symbol}</TableCell>
+                    <TableCell>{trade.side}</TableCell>
+                    <TableCell>{trade.entry_price.toFixed(5)}</TableCell>
+                    <TableCell>{trade.exit_price !== null ? trade.exit_price.toFixed(5) : "—"}</TableCell>
+                    <TableCell>{trade.pnl !== null ? trade.pnl.toFixed(2) : "—"}</TableCell>
+                    <TableCell>
+                      <Chip size="small" label={trade.status} color={trade.status === "open" ? "warning" : "default"} />
+                    </TableCell>
+                    <TableCell>
+                      {trade.status === "open" && (
+                        <Button size="small" onClick={() => handleCloseTrade(trade.id)}>
+                          Close
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+          {trades.length === 0 && (
+            <Typography color="text.secondary" sx={{ mt: 2 }}>
+              No trades yet for this portfolio.
+            </Typography>
+          )}
         </CardContent>
       </Card>
     </Box>

@@ -1,22 +1,23 @@
 import { useState } from "react";
 import {
   Box,
-  Typography,
   TextField,
   Button,
   Card,
   CardContent,
-  Alert,
   CircularProgress,
   Table,
   TableHead,
   TableRow,
   TableCell,
-  TableBody
+  TableBody,
+  Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { BacktestRunResponse, runBacktest } from "@/features/backtest/api/backtestApi";
+import { PageHeader } from "@/shared/ui/PageHeader";
+import { useToast } from "@/shared/ui/ToastProvider";
 
 export function BacktestPage() {
   const [symbol, setSymbol] = useState("EUR/USD");
@@ -26,11 +27,10 @@ export function BacktestPage() {
   const [riskPct, setRiskPct] = useState(1);
   const [result, setResult] = useState<BacktestRunResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const handleRun = async () => {
     setLoading(true);
-    setError(null);
     setResult(null);
     try {
       const response = await runBacktest({
@@ -50,8 +50,9 @@ export function BacktestPage() {
         max_holding_bars: 200
       });
       setResult(response);
+      showToast("Backtest completed", "success");
     } catch (err) {
-      setError((err as Error).message);
+      showToast((err as Error).message, "error");
     } finally {
       setLoading(false);
     }
@@ -69,8 +70,8 @@ export function BacktestPage() {
   })();
 
   return (
-    <Box sx={{ p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Typography variant="h4">Backtesting</Typography>
+    <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
+      <PageHeader title="Backtesting" subtitle="Test rule-based strategies against historical data" />
       <Card>
         <CardContent>
           <Grid container spacing={2}>
@@ -109,15 +110,12 @@ export function BacktestPage() {
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }} sx={{ display: "flex", alignItems: "center" }}>
               <Button variant="contained" onClick={handleRun} disabled={loading} fullWidth>
-                Run backtest
+                {loading ? <CircularProgress size={22} color="inherit" /> : "Run backtest"}
               </Button>
             </Grid>
           </Grid>
         </CardContent>
       </Card>
-
-      {loading && <CircularProgress />}
-      {error && <Alert severity="error">{error}</Alert>}
 
       {result &&
         result.results.map((intervalResult) => (
@@ -165,30 +163,32 @@ export function BacktestPage() {
                   <Line type="monotone" dataKey="equity" stroke="#2196f3" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Side</TableCell>
-                    <TableCell>Entry</TableCell>
-                    <TableCell>Exit</TableCell>
-                    <TableCell>PnL</TableCell>
-                    <TableCell>R</TableCell>
-                    <TableCell>Reason</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {intervalResult.trades.slice(0, 20).map((trade, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{trade.side}</TableCell>
-                      <TableCell>{trade.entry_price.toFixed(5)}</TableCell>
-                      <TableCell>{trade.exit_price.toFixed(5)}</TableCell>
-                      <TableCell>{trade.pnl.toFixed(2)}</TableCell>
-                      <TableCell>{trade.r_multiple !== null ? trade.r_multiple.toFixed(2) : "—"}</TableCell>
-                      <TableCell>{trade.exit_reason}</TableCell>
+              <Box sx={{ overflowX: "auto" }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Side</TableCell>
+                      <TableCell>Entry</TableCell>
+                      <TableCell>Exit</TableCell>
+                      <TableCell>PnL</TableCell>
+                      <TableCell>R</TableCell>
+                      <TableCell>Reason</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {intervalResult.trades.slice(0, 20).map((trade, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{trade.side}</TableCell>
+                        <TableCell>{trade.entry_price.toFixed(5)}</TableCell>
+                        <TableCell>{trade.exit_price.toFixed(5)}</TableCell>
+                        <TableCell>{trade.pnl.toFixed(2)}</TableCell>
+                        <TableCell>{trade.r_multiple !== null ? trade.r_multiple.toFixed(2) : "—"}</TableCell>
+                        <TableCell>{trade.exit_reason}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
             </CardContent>
           </Card>
         ))}

@@ -1,18 +1,43 @@
 import { createTheme, Theme } from "@mui/material/styles";
 
 export type AppThemeMode = "light" | "dark";
+export type AccentColorKey = "blue" | "purple" | "green" | "orange" | "yellow" | "red" | "pink" | "cyan";
+
+interface AccentDefinition {
+  key: AccentColorKey;
+  label: string;
+  main: string;
+  light: string;
+  dark: string;
+}
+
+export const ACCENT_COLOR_OPTIONS: AccentDefinition[] = [
+  { key: "blue", label: "Blue", main: "#3b82f6", light: "#60a5fa", dark: "#2563eb" },
+  { key: "purple", label: "Purple", main: "#8b5cf6", light: "#a78bfa", dark: "#7c3aed" },
+  { key: "green", label: "Green", main: "#10b981", light: "#34d399", dark: "#059669" },
+  { key: "orange", label: "Orange", main: "#f97316", light: "#fb923c", dark: "#ea580c" },
+  { key: "yellow", label: "Yellow", main: "#eab308", light: "#facc15", dark: "#ca8a04" },
+  { key: "red", label: "Red", main: "#ef4444", light: "#f87171", dark: "#dc2626" },
+  { key: "pink", label: "Pink", main: "#ec4899", light: "#f472b6", dark: "#db2777" },
+  { key: "cyan", label: "Cyan", main: "#06b6d4", light: "#22d3ee", dark: "#0891b2" }
+];
+
+function getAccent(key: AccentColorKey): AccentDefinition {
+  return ACCENT_COLOR_OPTIONS.find((option) => option.key === key) ?? ACCENT_COLOR_OPTIONS[0];
+}
 
 const bullishGradient = "linear-gradient(135deg, #16a34a 0%, #22c55e 100%)";
 const bearishGradient = "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)";
-const primaryGradient = "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)";
 
-export function createAppTheme(mode: AppThemeMode): Theme {
+export function createAppTheme(mode: AppThemeMode, accentColor: AccentColorKey): Theme {
   const isDark = mode === "dark";
+  const accent = getAccent(accentColor);
+  const primaryGradient = `linear-gradient(135deg, ${accent.dark} 0%, ${accent.light} 100%)`;
 
   return createTheme({
     palette: {
       mode,
-      primary: { main: "#3b82f6" },
+      primary: { main: accent.main, light: accent.light, dark: accent.dark },
       success: { main: "#22c55e", dark: "#16a34a", light: "#4ade80" },
       error: { main: "#ef4444", dark: "#dc2626", light: "#f87171" },
       warning: { main: "#f59e0b" },
@@ -44,7 +69,7 @@ export function createAppTheme(mode: AppThemeMode): Theme {
             }
           }
           :focus-visible {
-            outline: 2px solid #3b82f6;
+            outline: 2px solid ${accent.main};
             outline-offset: 2px;
           }
           html { scroll-behavior: smooth; }
@@ -53,9 +78,7 @@ export function createAppTheme(mode: AppThemeMode): Theme {
       },
       MuiPaper: {
         styleOverrides: {
-          root: {
-            backgroundImage: "none"
-          }
+          root: { backgroundImage: "none" }
         }
       },
       MuiCard: {
@@ -126,11 +149,11 @@ export function createAppTheme(mode: AppThemeMode): Theme {
           },
           containedPrimary: {
             backgroundImage: primaryGradient,
-            boxShadow: "0 4px 16px rgba(59,130,246,0.35)",
+            boxShadow: `0 4px 16px ${accent.main}59`,
             "&:hover": {
               backgroundImage: primaryGradient,
               filter: "brightness(1.08)",
-              boxShadow: "0 6px 20px rgba(59,130,246,0.45)"
+              boxShadow: `0 6px 20px ${accent.main}73`
             }
           }
         }
@@ -147,7 +170,7 @@ export function createAppTheme(mode: AppThemeMode): Theme {
           root: {
             borderRadius: 12,
             transition: "box-shadow 140ms ease",
-            "&.Mui-focused": { boxShadow: "0 0 0 3px rgba(59,130,246,0.25)" }
+            "&.Mui-focused": { boxShadow: `0 0 0 3px ${accent.main}40` }
           }
         }
       },
@@ -174,6 +197,18 @@ export function createAppTheme(mode: AppThemeMode): Theme {
             }
           }
         }
+      },
+      MuiToggleButton: {
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+            "&.Mui-selected": {
+              backgroundImage: primaryGradient,
+              color: "#ffffff",
+              "&:hover": { backgroundImage: primaryGradient, filter: "brightness(1.08)" }
+            }
+          }
+        }
       }
     }
   });
@@ -181,4 +216,3 @@ export function createAppTheme(mode: AppThemeMode): Theme {
 
 export const bullishGradientCss = bullishGradient;
 export const bearishGradientCss = bearishGradient;
-export const primaryGradientCss = primaryGradient;

@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Card, CardContent, TextField, MenuItem, CircularProgress, Alert } from "@mui/material";
+import { Box, Card, CardContent, TextField, MenuItem, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Portfolio, PortfolioPerformance, getPortfolioPerformance, listPortfolios } from "@/features/paper/api/paperApi";
+import { PageHeader } from "@/shared/ui/PageHeader";
+import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
+import { useToast } from "@/shared/ui/ToastProvider";
 
 export function AnalyticsPage() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
   const [performance, setPerformance] = useState<PortfolioPerformance | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     listPortfolios()
@@ -19,7 +22,7 @@ export function AnalyticsPage() {
           setSelectedPortfolioId(result[0].id);
         }
       })
-      .catch((err) => setError((err as Error).message))
+      .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -27,16 +30,12 @@ export function AnalyticsPage() {
     if (selectedPortfolioId) {
       getPortfolioPerformance(selectedPortfolioId)
         .then(setPerformance)
-        .catch((err) => setError((err as Error).message));
+        .catch((err) => showToast((err as Error).message, "error"));
     }
   }, [selectedPortfolioId]);
 
   if (loading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingSkeleton />;
   }
 
   const chartData = performance
@@ -47,22 +46,23 @@ export function AnalyticsPage() {
     : [];
 
   return (
-    <Box sx={{ p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Typography variant="h4">Analytics</Typography>
-      {error && <Alert severity="error">{error}</Alert>}
-      <TextField
-        select
-        label="Portfolio"
-        value={selectedPortfolioId}
-        onChange={(e) => setSelectedPortfolioId(e.target.value)}
-        sx={{ maxWidth: 300 }}
-      >
-        {portfolios.map((portfolio) => (
-          <MenuItem key={portfolio.id} value={portfolio.id}>
-            {portfolio.name}
-          </MenuItem>
-        ))}
-      </TextField>
+    <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
+      <PageHeader title="Analytics" subtitle="Portfolio performance at a glance" />
+      {portfolios.length > 0 && (
+        <TextField
+          select
+          label="Portfolio"
+          value={selectedPortfolioId}
+          onChange={(e) => setSelectedPortfolioId(e.target.value)}
+          sx={{ maxWidth: 300 }}
+        >
+          {portfolios.map((portfolio) => (
+            <MenuItem key={portfolio.id} value={portfolio.id}>
+              {portfolio.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
 
       {performance && (
         <>
@@ -121,7 +121,7 @@ export function AnalyticsPage() {
                   <XAxis dataKey="label" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#2196f3" />
+                  <Bar dataKey="value" fill="#2196f3" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -129,7 +129,11 @@ export function AnalyticsPage() {
         </>
       )}
       {portfolios.length === 0 && (
-        <Typography color="text.secondary">Create a portfolio in Paper Trading to see analytics.</Typography>
+        <Card>
+          <CardContent>
+            <Typography color="text.secondary">Create a portfolio in Paper Trading to see analytics.</Typography>
+          </CardContent>
+        </Card>
       )}
     </Box>
   );
