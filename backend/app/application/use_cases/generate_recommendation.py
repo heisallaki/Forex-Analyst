@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from app.application.dto.decision_dto import RecommendationResponse
@@ -11,8 +11,8 @@ from app.domain.services.decision_engine import build_recommendation
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
 
 DISCLAIMER = (
-    "This is an automated analysis and recommendation, not financial advice and not an executed trade. "
-    "No position will be opened automatically."
+    "This is an automated analysis and recommendation, not financial advice "
+    "and not an executed trade. No position will be opened automatically."
 )
 
 
@@ -53,7 +53,7 @@ async def generate_recommendation_use_case(
             "invalidation_conditions": recommendation["invalidation_conditions"],
             "source": "decision_engine",
         },
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         user_id=user_id,
     )
     await backtest_repository.save_signal(signal)
@@ -61,7 +61,7 @@ async def generate_recommendation_use_case(
     return RecommendationResponse(
         symbol=symbol,
         interval=interval,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         action=recommendation["action"],
         trend=recommendation["trend"],
         confidence=recommendation["confidence"],

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from app.application.dto.backtest_dto import (
@@ -30,7 +30,9 @@ def _to_rule_group(schema) -> RuleGroup | None:
     return RuleGroup(
         match=schema.match,
         conditions=[
-            Condition(field=c.field, operator=c.operator, value=c.value, compare_field=c.compare_field)
+            Condition(
+                field=c.field, operator=c.operator, value=c.value, compare_field=c.compare_field
+            )
             for c in schema.conditions
         ],
     )
@@ -139,11 +141,17 @@ async def run_backtest_use_case(
             )
 
         recorded_timestamp = (
-            simulated_trades[-1].closed_at if simulated_trades else datetime.now(timezone.utc)
+            simulated_trades[-1].closed_at if simulated_trades else datetime.now(UTC)
         )
-        metric_tags = {"strategy": payload.strategy_name, "symbol": payload.symbol, "interval": interval}
+        metric_tags = {
+            "strategy": payload.strategy_name,
+            "symbol": payload.symbol,
+            "interval": interval,
+        }
         metrics = [
-            Metric(id=uuid4(), name=name, value=value, tags=metric_tags, recorded_at=recorded_timestamp)
+            Metric(
+                id=uuid4(), name=name, value=value, tags=metric_tags, recorded_at=recorded_timestamp
+            )
             for name, value in [
                 ("win_rate", stats["win_rate"]),
                 ("profit_factor", stats["profit_factor"]),

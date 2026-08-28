@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -30,11 +30,15 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_or_create_strategy(self, name: str, description: str | None, parameters: dict) -> Strategy:
+    async def get_or_create_strategy(
+        self, name: str, description: str | None, parameters: dict
+    ) -> Strategy:
         result = await self.session.execute(select(StrategyModel).where(StrategyModel.name == name))
         model = result.scalar_one_or_none()
         if model is None:
-            model = StrategyModel(name=name, description=description, parameters=parameters, is_active=False)
+            model = StrategyModel(
+                name=name, description=description, parameters=parameters, is_active=False
+            )
             self.session.add(model)
             await self.session.commit()
             await self.session.refresh(model)
@@ -95,7 +99,9 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         await self.session.commit()
         return len(models)
 
-    async def list_signals(self, symbol: str | None, limit: int, include_hidden: bool) -> list[Signal]:
+    async def list_signals(
+        self, symbol: str | None, limit: int, include_hidden: bool
+    ) -> list[Signal]:
         query = select(SignalModel)
         if symbol is not None:
             query = query.where(SignalModel.symbol == symbol)
@@ -108,14 +114,16 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
     async def set_signals_hidden(
         self, signal_ids: list[UUID], hidden: bool, requesting_user_id: UUID, is_admin: bool
     ) -> tuple[list[UUID], list[UUID]]:
-        result = await self.session.execute(select(SignalModel).where(SignalModel.id.in_(signal_ids)))
+        result = await self.session.execute(
+            select(SignalModel).where(SignalModel.id.in_(signal_ids))
+        )
         models = result.scalars().all()
         succeeded: list[UUID] = []
         skipped: list[UUID] = []
         for model in models:
             owned = model.user_id is not None and model.user_id == requesting_user_id
             if is_admin or owned:
-                model.hidden_at = datetime.now(timezone.utc) if hidden else None
+                model.hidden_at = datetime.now(UTC) if hidden else None
                 succeeded.append(model.id)
             else:
                 skipped.append(model.id)
@@ -127,7 +135,9 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
     async def delete_signals(
         self, signal_ids: list[UUID], requesting_user_id: UUID, is_admin: bool
     ) -> tuple[list[UUID], list[UUID]]:
-        result = await self.session.execute(select(SignalModel).where(SignalModel.id.in_(signal_ids)))
+        result = await self.session.execute(
+            select(SignalModel).where(SignalModel.id.in_(signal_ids))
+        )
         models = result.scalars().all()
         succeeded: list[UUID] = []
         skipped: list[UUID] = []
@@ -144,7 +154,9 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         return succeeded, skipped
 
     async def list_strategies(self) -> list[Strategy]:
-        result = await self.session.execute(select(StrategyModel).order_by(StrategyModel.created_at.desc()))
+        result = await self.session.execute(
+            select(StrategyModel).order_by(StrategyModel.created_at.desc())
+        )
         return [
             Strategy(
                 id=model.id,
@@ -157,7 +169,9 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         ]
 
     async def activate_strategy(self, strategy_id: UUID) -> None:
-        result = await self.session.execute(select(StrategyModel).where(StrategyModel.id == strategy_id))
+        result = await self.session.execute(
+            select(StrategyModel).where(StrategyModel.id == strategy_id)
+        )
         model = result.scalar_one_or_none()
         if model is not None and not model.is_active:
             model.is_active = True

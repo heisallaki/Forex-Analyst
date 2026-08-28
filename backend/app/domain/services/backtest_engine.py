@@ -140,7 +140,11 @@ def run_backtest(feature_rows: list[dict], config: BacktestConfig) -> list[Simul
 
             if exit_price is not None:
                 direction_multiplier = 1 if position["side"] == "long" else -1
-                pnl = (exit_price - position["entry_price"]) * direction_multiplier * position["quantity"]
+                pnl = (
+                    (exit_price - position["entry_price"])
+                    * direction_multiplier
+                    * position["quantity"]
+                )
                 pnl -= config.commission_per_trade
                 equity += pnl
                 trades.append(
@@ -171,7 +175,9 @@ def run_backtest(feature_rows: list[dict], config: BacktestConfig) -> list[Simul
             side = "long" if entered_long else "short"
             raw_entry = row["open"]
             entry_price = (
-                raw_entry + spread / 2 + slippage if side == "long" else raw_entry - spread / 2 - slippage
+                raw_entry + spread / 2 + slippage
+                if side == "long"
+                else raw_entry - spread / 2 - slippage
             )
             sl_distance = atr * config.stop_loss_atr_multiple
             tp_distance = atr * config.take_profit_atr_multiple
@@ -255,7 +261,9 @@ def compute_statistics(trades: list[SimulatedTrade], initial_balance: float) -> 
     trades_per_year = (len(trades) / span_days) * 365.25
 
     sharpe_ratio = (mean_return / std_return) * (trades_per_year**0.5) if std_return > 0 else None
-    sortino_ratio = (mean_return / downside_std) * (trades_per_year**0.5) if downside_std > 0 else None
+    sortino_ratio = (
+        (mean_return / downside_std) * (trades_per_year**0.5) if downside_std > 0 else None
+    )
 
     peak = equity_curve[0]
     max_drawdown_pct = 0.0

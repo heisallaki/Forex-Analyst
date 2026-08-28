@@ -6,7 +6,9 @@ from app.domain.entities.backtest import Metric, Signal, Strategy, Trade
 
 class BacktestRepository(ABC):
     @abstractmethod
-    async def get_or_create_strategy(self, name: str, description: str | None, parameters: dict) -> Strategy:
+    async def get_or_create_strategy(
+        self, name: str, description: str | None, parameters: dict
+    ) -> Strategy:
         raise NotImplementedError
 
     @abstractmethod
@@ -22,7 +24,9 @@ class BacktestRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def list_signals(self, symbol: str | None, limit: int, include_hidden: bool) -> list[Signal]:
+    async def list_signals(
+        self, symbol: str | None, limit: int, include_hidden: bool
+    ) -> list[Signal]:
         raise NotImplementedError
 
     @abstractmethod
