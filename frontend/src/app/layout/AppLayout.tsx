@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   Box,
   Drawer,
   List,
@@ -12,15 +11,23 @@ import {
   IconButton,
   useMediaQuery,
   useTheme,
-  Tooltip
+  Tooltip,
+  Avatar,
+  Menu,
+  MenuItem,
+  Divider,
+  ListItemIcon
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import SettingsIcon from "@mui/icons-material/Settings";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { logout as logoutRequest } from "@/features/auth/api/authApi";
 import { useThemeStore } from "@/app/theme/themeStore";
+import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 
 const DRAWER_WIDTH = 240;
 
@@ -46,8 +53,10 @@ export function AppLayout() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleLogout = async () => {
+    setAnchorEl(null);
     if (refreshToken) {
       await logoutRequest(refreshToken).catch(() => undefined);
     }
@@ -61,6 +70,15 @@ export function AppLayout() {
       setMobileOpen(false);
     }
   };
+
+  const initials = user?.full_name
+    ? user.full_name
+        .split(" ")
+        .map((part) => part[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
 
   const navList = (
     <List sx={{ px: 1 }}>
@@ -125,19 +143,61 @@ export function AppLayout() {
               </IconButton>
             </Tooltip>
             {user && (
-              <Typography variant="body2" sx={{ display: { xs: "none", sm: "block" } }}>
-                {user.full_name}
-              </Typography>
-            )}
-            {user && (
-              <Button color="inherit" onClick={handleLogout}>
-                Logout
-              </Button>
+              <>
+                <Tooltip title={user.full_name}>
+                  <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu" sx={{ p: 0.5 }}>
+                    <Avatar
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        backgroundImage: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.light} 100%)`,
+                        border: "2px solid",
+                        borderColor: "background.paper",
+                        boxShadow: `0 0 0 1px ${theme.palette.primary.main}66`,
+                        transition: "transform 160ms ease, box-shadow 160ms ease",
+                        "&:hover": { transform: "scale(1.06)", boxShadow: `0 0 0 3px ${theme.palette.primary.main}55` }
+                      }}
+                    >
+                      {initials}
+                    </Avatar>
+                  </IconButton>
+                </Tooltip>
+                <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
+                  <Box sx={{ px: 2, py: 1, minWidth: 200 }}>
+                    <Typography variant="subtitle2">{user.full_name}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {user.email}
+                    </Typography>
+                  </Box>
+                  <Divider />
+                  <MenuItem
+                    onClick={() => {
+                      setAnchorEl(null);
+                      navigate("/settings");
+                    }}
+                  >
+                    <ListItemIcon>
+                      <SettingsIcon fontSize="small" />
+                    </ListItemIcon>
+                    Settings
+                  </MenuItem>
+                  <MenuItem onClick={handleLogout}>
+                    <ListItemIcon>
+                      <LogoutIcon fontSize="small" />
+                    </ListItemIcon>
+                    Logout
+                  </MenuItem>
+                </Menu>
+              </>
             )}
           </Toolbar>
         </AppBar>
         <Box sx={{ maxWidth: "100vw", overflowX: "hidden" }}>
-          <Outlet />
+          <Suspense fallback={<PageLoadingSkeleton />}>
+            <Outlet />
+          </Suspense>
         </Box>
       </Box>
     </Box>

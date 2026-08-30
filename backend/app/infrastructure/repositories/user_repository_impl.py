@@ -19,6 +19,7 @@ def _to_entity(model: UserModel) -> User:
         role=model.role,
         permissions=model.permissions,
         is_active=model.is_active,
+        is_verified=model.is_verified,
         created_at=model.created_at,
         updated_at=model.updated_at,
     )
@@ -47,6 +48,7 @@ class SqlAlchemyUserRepository(UserRepository):
             role=user.role,
             permissions=user.permissions,
             is_active=user.is_active,
+            is_verified=user.is_verified,
         )
         self.session.add(model)
         await self.session.commit()
@@ -82,3 +84,30 @@ class SqlAlchemyUserRepository(UserRepository):
             .values(revoked=True)
         )
         await self.session.commit()
+
+    async def revoke_all_refresh_tokens_for_user(self, user_id: UUID) -> None:
+        await self.session.execute(
+            update(RefreshTokenModel)
+            .where(RefreshTokenModel.user_id == user_id, RefreshTokenModel.revoked.is_(False))
+            .values(revoked=True)
+        )
+        await self.session.commit()
+
+    async def mark_verified(self, user_id: UUID) -> None:
+        await self.session.execute(
+            update(UserModel).where(UserModel.id == user_id).values(is_verified=True)
+        )
+        await self.session.commit()
+
+    async def update_password(self, user_id: UUID, hashed_password: str) -> None:
+        await self.session.execute(
+            update(UserModel).where(UserModel.id == user_id).values(hashed_password=hashed_password)
+        )
+        await self.session.commit()
+
+    async def delete_user(self, user_id: UUID) -> None:
+        result = await self.session.execute(select(UserModel).where(UserModel.id == user_id))
+        model = result.scalar_one_or_none()
+        if model is not None:
+            await self.session.delete(model)
+            await self.session.commit()

@@ -34,3 +34,15 @@ export function logout(refresh_token: string): Promise<void> {
     body: JSON.stringify({ refresh_token })
   }).then(() => undefined);
 }
+
+export interface MessageResponse {
+  message: string;
+}
+
+export function forgotPassword(email: string): Promise<MessageResponse> {
+  return postJson<MessageResponse>("/auth/forgot-password", { email });
+}
+
+export function resetPassword(email: string, code: string, newPassword: string): Promise<MessageResponse> {
+  return postJson<MessageResponse>("/auth/reset-password", { email, code, new_password: newPassword });
+}

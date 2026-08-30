@@ -64,14 +64,25 @@ export function LoginForm() {
         helperText={errors.email?.message}
         {...registerField("email")}
       />
-      <PasswordField
-        label="Password"
-        autoComplete="current-password"
-        error={!!errors.password}
-        helperText={errors.password?.message}
-        value={passwordValue || ""}
-        {...registerField("password")}
-      />
+      <Box>
+        <PasswordField
+          label="Password"
+          autoComplete="current-password"
+          error={!!errors.password}
+          helperText={errors.password?.message}
+          value={passwordValue || ""}
+          {...registerField("password")}
+        />
+        <Box sx={{ textAlign: "right", mt: 0.5 }}>
+          <Box
+            component="span"
+            onClick={() => navigate("/forgot-password")}
+            sx={{ color: "primary.main", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
+          >
+            Forgot password?
+          </Box>
+        </Box>
+      </Box>
       <Button type="submit" variant="contained" color="primary" size="large" disabled={isSubmitting || success} sx={{ py: 1.3 }}>
         {isSubmitting ? <CircularProgress size={22} color="inherit" /> : success ? "Signed in ✅" : "Sign in"}
       </Button>

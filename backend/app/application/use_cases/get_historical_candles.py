@@ -11,10 +11,14 @@ async def get_historical_candles(
     client: TwelveDataClient,
 ) -> list[CandleResponse]:
     stored = await repository.get_candles(symbol, interval, limit)
-    if len(stored) >= limit:
-        return [CandleResponse(**candle.__dict__) for candle in stored]
 
-    fetched = await client.get_time_series(symbol, interval, limit)
-    await repository.upsert_candles(fetched)
+    if len(stored) < limit:
+        fetched = await client.get_time_series(symbol, interval, limit)
+        await repository.upsert_candles(fetched)
+    else:
+        refresh_window = min(limit, 5)
+        recent = await client.get_time_series(symbol, interval, refresh_window)
+        await repository.upsert_candles(recent)
+
     refreshed = await repository.get_candles(symbol, interval, limit)
     return [CandleResponse(**candle.__dict__) for candle in refreshed]

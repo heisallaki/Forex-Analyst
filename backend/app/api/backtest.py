@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, require_permission
+from app.api.deps import get_db_session, require_permission, require_verified
 from app.application.dto.backtest_dto import (
     BacktestRunRequest,
     BacktestRunResponse,
@@ -22,6 +22,7 @@ router = APIRouter(prefix="/backtest", tags=["backtest"])
 async def run_backtest_endpoint(
     payload: BacktestRunRequest,
     current_user: Annotated[User, Depends(require_permission("manage_strategies"))],
+    verified_user: Annotated[User, Depends(require_verified())],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> BacktestRunResponse:
     market_repository = SqlAlchemyMarketRepository(session)

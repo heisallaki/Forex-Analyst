@@ -12,17 +12,33 @@ import {
   ToggleButton,
   Typography,
   Tooltip,
-  Grid2 as Grid
+  Grid2,
+  TextField,
+  Button,
+  CircularProgress
 } from "@mui/material";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import SettingsBrightnessIcon from "@mui/icons-material/SettingsBrightness";
 import CheckIcon from "@mui/icons-material/Check";
-import { ExecutionStatus, UserProfile, getExecutionStatus, getProfile } from "@/features/settings/api/settingsApi";
+import { useNavigate } from "react-router-dom";
+import {
+  ExecutionStatus,
+  UserProfile,
+  confirmAccountDeletion,
+  getExecutionStatus,
+  getProfile,
+  requestAccountDeletion,
+  resendVerification,
+  verifyEmail
+} from "@/features/settings/api/settingsApi";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { ACCENT_COLOR_OPTIONS } from "@/app/theme";
 import { ThemeModePreference, useThemeStore } from "@/app/theme/themeStore";
+import { useAuthStore } from "@/features/auth/store/authStore";
+import { useToast } from "@/shared/ui/ToastProvider";
 
 const MODE_OPTIONS: { value: ThemeModePreference; label: string; icon: ReactNode }[] = [
   { value: "light", label: "Light", icon: <LightModeIcon fontSize="small" /> },
@@ -34,21 +50,84 @@ export function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [executionStatus, setExecutionStatus] = useState<ExecutionStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<"idle" | "confirm" | "code">("idle");
+  const [deleteCode, setDeleteCode] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const { modePreference, accentColor, setModePreference, setAccentColor } = useThemeStore();
+  const clearSession = useAuthStore((state) => state.clearSession);
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const loadProfile = () =>
+    getProfile().then(async (result) => {
+      setProfile(result);
+      if (result.role === "admin") {
+        const status = await getExecutionStatus();
+        setExecutionStatus(status);
+      }
+    });
 
   useEffect(() => {
-    getProfile()
-      .then(async (result) => {
-        setProfile(result);
-        if (result.role === "admin") {
-          const status = await getExecutionStatus();
-          setExecutionStatus(status);
-        }
-      })
-      .catch((err) => setError((err as Error).message))
+    loadProfile()
+      .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    try {
+      await verifyEmail(verifyCode);
+      showToast("Email verified ✅", "success");
+      setVerifyCode("");
+      await loadProfile();
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await resendVerification();
+      showToast("A new code has been sent to your email", "success");
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleRequestDeletion = async () => {
+    setDeleting(true);
+    try {
+      await requestAccountDeletion();
+      showToast("A confirmation code has been sent to your email", "info");
+      setDeleteStep("code");
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleConfirmDeletion = async () => {
+    setDeleting(true);
+    try {
+      await confirmAccountDeletion(deleteCode);
+      showToast("Account permanently deleted", "success");
+      clearSession();
+      navigate("/login");
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return <PageLoadingSkeleton />;
@@ -57,7 +136,41 @@ export function SettingsPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <PageHeader title="Settings" subtitle="Your profile, appearance, and system configuration" />
-      {error && <Alert severity="error">{error}</Alert>}
+
+      {profile && !profile.is_verified && (
+        <Alert severity="warning">
+          Your email is not verified. Some actions (training AI models, running backtests, opening trades, creating
+          portfolios) require a verified email. Check the Email Verification section below.
+        </Alert>
+      )}
+
+      {profile && !profile.is_verified && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Email Verification
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Enter the 6-digit code sent to {profile.email}. Codes expire after 10 minutes.
+            </Typography>
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+              <TextField
+                label="Verification code"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value)}
+                inputProps={{ maxLength: 6 }}
+                sx={{ maxWidth: 200 }}
+              />
+              <Button variant="contained" onClick={handleVerify} disabled={verifying || verifyCode.length !== 6}>
+                {verifying ? <CircularProgress size={20} color="inherit" /> : "Verify"}
+              </Button>
+              <Button variant="text" onClick={handleResend} disabled={resending}>
+                {resending ? <CircularProgress size={16} color="inherit" /> : "Resend code"}
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent>
@@ -128,10 +241,6 @@ export function SettingsPage() {
               );
             })}
           </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
-            The accent color updates buttons, navigation, and highlights across the app. Bullish (green) and bearish
-            (red) trading indicators always keep their fixed meaning regardless of accent.
-          </Typography>
         </CardContent>
       </Card>
 
@@ -143,7 +252,10 @@ export function SettingsPage() {
             </Typography>
             <Typography>{profile.full_name}</Typography>
             <Typography color="text.secondary">{profile.email}</Typography>
-            <Chip sx={{ mt: 1 }} label={profile.role} color="primary" variant="outlined" />
+            <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+              <Chip label={profile.role} color="primary" variant="outlined" />
+              <Chip label={profile.is_verified ? "✅ verified" : "❌ unverified"} variant="outlined" />
+            </Box>
             <Typography variant="subtitle2" sx={{ mt: 2 }}>
               Permissions
             </Typography>
@@ -175,29 +287,82 @@ export function SettingsPage() {
                 variant="outlined"
               />
             </Box>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid size={{ xs: 6, sm: 4 }}>
+            <Grid2 container spacing={2} sx={{ mt: 1 }}>
+              <Grid2 size={{ xs: 6, sm: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   Max position size
                 </Typography>
                 <Typography variant="h6">{executionStatus.max_position_size}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6, sm: 4 }}>
+              </Grid2>
+              <Grid2 size={{ xs: 6, sm: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   Max open positions
                 </Typography>
                 <Typography variant="h6">{executionStatus.max_open_positions}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6, sm: 4 }}>
+              </Grid2>
+              <Grid2 size={{ xs: 6, sm: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   Max daily loss
                 </Typography>
                 <Typography variant="h6">{executionStatus.max_daily_loss_pct}%</Typography>
-              </Grid>
-            </Grid>
+              </Grid2>
+            </Grid2>
           </CardContent>
         </Card>
       )}
+
+      <Card sx={{ borderColor: "error.main", borderWidth: 1, borderStyle: "solid" }}>
+        <CardContent>
+          <Typography variant="h6" color="error" gutterBottom>
+            Danger Zone
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Permanently delete your account and all associated portfolios and trades. This cannot be undone.
+          </Typography>
+
+          {deleteStep === "idle" && (
+            <Button variant="outlined" color="error" onClick={() => setDeleteStep("confirm")}>
+              Delete Account
+            </Button>
+          )}
+
+          {deleteStep === "code" && (
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+              <TextField
+                label="Confirmation code"
+                value={deleteCode}
+                onChange={(e) => setDeleteCode(e.target.value)}
+                inputProps={{ maxLength: 6 }}
+                sx={{ maxWidth: 200 }}
+              />
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleConfirmDeletion}
+                disabled={deleting || deleteCode.length !== 6}
+              >
+                {deleting ? <CircularProgress size={20} color="inherit" /> : "Confirm permanent deletion"}
+              </Button>
+              <Button variant="text" onClick={() => setDeleteStep("idle")}>
+                Cancel
+              </Button>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
+      <ConfirmDialog
+        open={deleteStep === "confirm"}
+        title="Delete your account?"
+        description="This permanently deletes your account, portfolios, and trades. This cannot be undone. A confirmation code will be sent to your email before deletion actually happens."
+        confirmLabel="Send confirmation code"
+        destructive
+        onConfirm={() => {
+          setDeleteStep("idle");
+          handleRequestDeletion();
+        }}
+        onCancel={() => setDeleteStep("idle")}
+      />
     </Box>
   );
 }

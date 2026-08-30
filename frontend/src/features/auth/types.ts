@@ -5,6 +5,7 @@ export interface AuthUser {
   role: string;
   permissions: Record<string, boolean>;
   is_active: boolean;
+  is_verified: boolean;
 }
 
 export interface TokenResponse {

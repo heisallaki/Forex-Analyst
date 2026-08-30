@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { CandlestickSeries, ColorType, IChartApi, Time, createChart } from "lightweight-charts";
+import { CandlestickData, CandlestickSeries, ColorType, IChartApi, ISeriesApi, Time, createChart } from "lightweight-charts";
 
 export interface CandlePoint {
   time: Time;
@@ -11,11 +11,13 @@ export interface CandlePoint {
 
 interface CandlestickChartProps {
   data: CandlePoint[];
+  liveBar?: CandlePoint | null;
 }
 
-export function CandlestickChart({ data }: CandlestickChartProps) {
+export function CandlestickChart({ data, liveBar }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -36,14 +38,29 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
       wickUpColor: "#26a69a",
       wickDownColor: "#ef5350"
     });
-    series.setData(data);
-    chart.timeScale().fitContent();
+    seriesRef.current = series;
 
     return () => {
       chart.remove();
       chartRef.current = null;
+      seriesRef.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    if (!seriesRef.current) {
+      return;
+    }
+    seriesRef.current.setData(data as CandlestickData[]);
+    chartRef.current?.timeScale().fitContent();
   }, [data]);
+
+  useEffect(() => {
+    if (!seriesRef.current || !liveBar) {
+      return;
+    }
+    seriesRef.current.update(liveBar as CandlestickData);
+  }, [liveBar]);
 
   return <div ref={containerRef} style={{ width: "100%" }} />;
 }

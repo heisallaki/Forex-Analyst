@@ -13,10 +13,21 @@ import {
   ListItem,
   ListItemText,
   Alert,
-  Typography
+  Typography,
+  Tooltip
 } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
 import { getMarketStatus } from "@/features/market/api/marketApi";
-import { PredictMarketResponse, RecommendationResponse, getPredictions, getRecommendation } from "@/features/ai/api/aiApi";
+import {
+  ModelStatusResponse,
+  PredictMarketResponse,
+  RecommendationResponse,
+  getModelStatus,
+  getPredictions,
+  getRecommendation,
+  trainModels
+} from "@/features/ai/api/aiApi";
 import { useToast } from "@/shared/ui/ToastProvider";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { getPreference, setPreference } from "@/shared/utils/userPreferences";
@@ -27,9 +38,11 @@ export function AIAnalysisPage() {
   const [instruments, setInstruments] = useState<string[]>([]);
   const [symbol, setSymbol] = useState(() => getPreference("ai_symbol", "EUR/USD"));
   const [interval, setInterval] = useState(() => getPreference("ai_interval", "1min"));
+  const [modelStatus, setModelStatus] = useState<ModelStatusResponse | null>(null);
   const [predictions, setPredictions] = useState<PredictMarketResponse | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [training, setTraining] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -37,6 +50,19 @@ export function AIAnalysisPage() {
       .then((status) => setInstruments(status.instruments))
       .catch(() => undefined);
   }, []);
+
+  const loadModelStatus = () => {
+    getModelStatus(symbol, interval)
+      .then(setModelStatus)
+      .catch(() => setModelStatus(null));
+  };
+
+  useEffect(() => {
+    if (symbol) {
+      loadModelStatus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, interval]);
 
   const handleSymbolChange = (value: string) => {
     setSymbol(value);
@@ -46,6 +72,26 @@ export function AIAnalysisPage() {
   const handleIntervalChange = (value: string) => {
     setInterval(value);
     setPreference("ai_interval", value);
+  };
+
+  const handleTrain = async () => {
+    setTraining(true);
+    try {
+      const response = await trainModels(symbol, interval);
+      showToast(`Trained 6 models on ${response.dataset_size} samples`, "success");
+      loadModelStatus();
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.toLowerCase().includes("admin")) {
+        showToast("Admin permission required to train models. Ask an administrator.", "warning");
+      } else if (message.toLowerCase().includes("verif")) {
+        showToast("Verify your email in Settings before training models.", "warning");
+      } else {
+        showToast(message, "error");
+      }
+    } finally {
+      setTraining(false);
+    }
   };
 
   const handleAnalyze = async () => {
@@ -91,6 +137,41 @@ export function AIAnalysisPage() {
           {loading ? <CircularProgress size={22} color="inherit" /> : "Analyze"}
         </Button>
       </Box>
+
+      <Card>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+            <Typography variant="subtitle2">
+              Model status for {symbol} · {interval}
+            </Typography>
+            <Button size="small" variant="outlined" onClick={handleTrain} disabled={training}>
+              {training ? <CircularProgress size={18} color="inherit" /> : "Train models"}
+            </Button>
+          </Box>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 1 }}>
+            {modelStatus?.models.map((model) => (
+              <Tooltip
+                key={model.model_name}
+                title={model.trained ? `Trained at ${model.trained_at}` : "Not trained yet for this symbol/interval"}
+              >
+                <Chip
+                  size="small"
+                  icon={model.trained ? <CheckCircleIcon /> : <CancelIcon />}
+                  label={model.model_name.replace(/_/g, " ")}
+                  color={model.trained ? "success" : "default"}
+                  variant={model.trained ? "filled" : "outlined"}
+                />
+              </Tooltip>
+            ))}
+          </Box>
+          {modelStatus && !modelStatus.all_trained && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              Not all models are trained yet for this symbol and interval. Training requires an admin account and a
+              verified email.
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
 
       {recommendation && (
         <Card sx={{ borderLeft: "4px solid", borderLeftColor: actionColor === "default" ? "divider" : `${actionColor}.main` }}>

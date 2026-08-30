@@ -37,3 +37,17 @@ class PredictMarketResponse(BaseModel):
     timestamp: datetime
     predictions: list[ModelPrediction]
     note: str
+
+
+class ModelStatusEntry(BaseModel):
+    model_name: str
+    trained: bool
+    trained_at: str | None
+    metrics: dict | None
+
+
+class ModelStatusResponse(BaseModel):
+    symbol: str
+    interval: str
+    models: list[ModelStatusEntry]
+    all_trained: bool

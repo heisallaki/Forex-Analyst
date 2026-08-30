@@ -5,7 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function ensureFreshToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   const state = useAuthStore.getState();
   if (!state.refreshToken) {
     return null;
@@ -39,7 +39,7 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   });
 
   if (response.status === 401) {
-    const newAccessToken = await ensureFreshToken();
+    const newAccessToken = await refreshAccessToken();
     if (newAccessToken) {
       response = await fetch(`${API_BASE_URL}${path}`, {
         ...init,

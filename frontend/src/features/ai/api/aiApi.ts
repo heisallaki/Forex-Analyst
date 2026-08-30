@@ -1,4 +1,4 @@
-import { httpGet } from "@/shared/api/httpClient";
+import { httpGet, httpPost } from "@/shared/api/httpClient";
 
 export interface ModelPrediction {
   model_name: string;
@@ -34,10 +34,45 @@ export interface RecommendationResponse {
   disclaimer: string;
 }
 
+export interface ModelStatusEntry {
+  model_name: string;
+  trained: boolean;
+  trained_at: string | null;
+  metrics: Record<string, unknown> | null;
+}
+
+export interface ModelStatusResponse {
+  symbol: string;
+  interval: string;
+  models: ModelStatusEntry[];
+  all_trained: boolean;
+}
+
+export interface TrainModelsResponse {
+  symbol: string;
+  interval: string;
+  dataset_size: number;
+  models: { model_name: string; version: string; metrics: Record<string, unknown> }[];
+}
+
 export async function getPredictions(symbol: string, interval: string): Promise<PredictMarketResponse> {
   return httpGet<PredictMarketResponse>(`/ai/predict/${encodeURIComponent(symbol)}?interval=${interval}`);
 }
 
 export async function getRecommendation(symbol: string, interval: string): Promise<RecommendationResponse> {
   return httpGet<RecommendationResponse>(`/decision/recommend/${encodeURIComponent(symbol)}?interval=${interval}`);
+}
+
+export async function getModelStatus(symbol: string, interval: string): Promise<ModelStatusResponse> {
+  return httpGet<ModelStatusResponse>(`/ai/models/status/${encodeURIComponent(symbol)}?interval=${interval}`);
+}
+
+export async function trainModels(symbol: string, interval: string): Promise<TrainModelsResponse> {
+  return httpPost<TrainModelsResponse>("/ai/train", {
+    symbol,
+    interval,
+    limit: 3000,
+    horizon: 20,
+    minimum_samples: 200
+  });
 }

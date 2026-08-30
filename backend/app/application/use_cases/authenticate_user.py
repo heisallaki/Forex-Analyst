@@ -36,5 +36,6 @@ async def authenticate_user(payload: LoginRequest, repository: UserRepository) -
             role=user.role,
             permissions=user.permissions,
             is_active=user.is_active,
+            is_verified=user.is_verified,
         ),
     )

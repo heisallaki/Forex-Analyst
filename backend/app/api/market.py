@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.market_sessions import get_active_sessions
 from app.domain.entities.user import User
 from app.infrastructure.cache.redis_client import get_redis_client
+from app.infrastructure.database.session import AsyncSessionLocal
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
 from app.infrastructure.market_data.twelve_data_stream import MARKET_TICKS_CHANNEL
 from app.infrastructure.repositories.market_repository_impl import SqlAlchemyMarketRepository
@@ -65,17 +66,16 @@ async def backfill(
 
 
 @router.websocket("/ws/prices")
-async def prices_websocket(
-    websocket: WebSocket,
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-) -> None:
+async def prices_websocket(websocket: WebSocket) -> None:
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=4401)
         return
 
-    repository = SqlAlchemyUserRepository(session)
-    user = await get_current_user_from_token(token, repository)
+    async with AsyncSessionLocal() as session:
+        repository = SqlAlchemyUserRepository(session)
+        user = await get_current_user_from_token(token, repository)
+
     if user is None or not user.permissions.get("view_markets", False):
         await websocket.close(code=4403)
         return
@@ -85,14 +85,30 @@ async def prices_websocket(
     pubsub = redis_client.pubsub()
     await pubsub.subscribe(MARKET_TICKS_CHANNEL)
 
-    try:
+    async def sender() -> None:
         while True:
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if message is not None:
                 await websocket.send_text(message["data"])
             await asyncio.sleep(0.01)
+
+    async def receiver() -> None:
+        while True:
+            await websocket.receive_text()
+
+    sender_task = asyncio.create_task(sender())
+    receiver_task = asyncio.create_task(receiver())
+
+    try:
+        _, pending = await asyncio.wait(
+            {sender_task, receiver_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
     except WebSocketDisconnect:
         pass
     finally:
+        sender_task.cancel()
+        receiver_task.cancel()
         await pubsub.unsubscribe(MARKET_TICKS_CHANNEL)
         await pubsub.close()

@@ -28,3 +28,19 @@ class UserRepository(ABC):
     @abstractmethod
     async def revoke_refresh_token(self, token_hash: str) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    async def revoke_all_refresh_tokens_for_user(self, user_id: UUID) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def mark_verified(self, user_id: UUID) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update_password(self, user_id: UUID, hashed_password: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete_user(self, user_id: UUID) -> None:
+        raise NotImplementedError

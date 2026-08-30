@@ -3,12 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, require_admin, require_permission
+from app.api.deps import get_db_session, require_admin, require_permission, require_verified
 from app.application.dto.ai_dto import (
+    ModelStatusResponse,
     PredictMarketResponse,
     TrainModelsRequest,
     TrainModelsResponse,
 )
+from app.application.use_cases.get_model_status import get_model_status_use_case
 from app.application.use_cases.predict_market import predict_market_use_case
 from app.application.use_cases.train_models import train_models_use_case
 from app.domain.entities.user import User
@@ -25,6 +27,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 async def train(
     payload: TrainModelsRequest,
     current_user: Annotated[User, Depends(require_admin())],
+    verified_user: Annotated[User, Depends(require_verified())],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> TrainModelsResponse:
     repository = SqlAlchemyMarketRepository(session)
@@ -33,6 +36,15 @@ async def train(
         return await train_models_use_case(payload, repository, client)
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
+
+
+@router.get("/models/status/{symbol:path}", response_model=ModelStatusResponse)
+async def model_status(
+    symbol: str,
+    current_user: Annotated[User, Depends(require_permission("view_markets"))],
+    interval: str = Query(default="1min"),
+) -> ModelStatusResponse:
+    return get_model_status_use_case(symbol, interval)
 
 
 @router.get("/predict/{symbol:path}", response_model=PredictMarketResponse)

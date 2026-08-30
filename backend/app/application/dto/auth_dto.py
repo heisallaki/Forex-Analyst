@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     role: str
     permissions: dict
     is_active: bool
+    is_verified: bool
 
 
 class TokenResponse(BaseModel):

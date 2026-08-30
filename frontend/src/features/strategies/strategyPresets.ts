@@ -36,8 +36,6 @@ const DEFAULT_PARAMS = {
   max_holding_bars: 200
 };
 
-const EMPTY_RULES = { long: { match: "all", conditions: [] }, short: { match: "all", conditions: [] } };
-
 export const STRATEGY_PRESETS: StrategyPreset[] = [
   {
     key: "trend_following",
@@ -194,53 +192,5 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
       take_profit_atr_multiple: 1.0,
       max_holding_bars: 15
     })
-  },
-  {
-    key: "price_action_sr",
-    strategyName: "price_action_support_resistance",
-    displayName: "Price Action & Support/Resistance",
-    description: "Trading reactions off horizontal support/resistance zones.",
-    status: "not_implemented",
-    limitationNote:
-      "Requires clustering historical swing points into persistent price zones and tracking price's relationship to them over time. That zone-detection feature does not exist yet — only single-bar swing-high/low flags are computed.",
-    suggestedInterval: "15min",
-    buildRuleGroups: () => EMPTY_RULES,
-    buildParams: () => DEFAULT_PARAMS
-  },
-  {
-    key: "news_catalyst",
-    strategyName: "news_fundamental_catalyst",
-    displayName: "News & Fundamental Catalyst Trading",
-    description: "Trading around scheduled economic releases and news catalysts.",
-    status: "not_implemented",
-    limitationNote:
-      "No economic calendar or news feed is integrated anywhere in this system — evaluated and explicitly deferred in the Market Data Engine module since no free provider met the reliability bar.",
-    suggestedInterval: "15min",
-    buildRuleGroups: () => EMPTY_RULES,
-    buildParams: () => DEFAULT_PARAMS
-  },
-  {
-    key: "fibonacci",
-    strategyName: "fibonacci_retracement",
-    displayName: "Fibonacci Retracement & Extension",
-    description: "Trading reactions at Fibonacci retracement/extension levels.",
-    status: "not_implemented",
-    limitationNote:
-      "No Fibonacci level calculation exists in feature engineering. Needs new logic to detect a qualifying swing pair and compute retracement levels as new per-bar features first.",
-    suggestedInterval: "15min",
-    buildRuleGroups: () => EMPTY_RULES,
-    buildParams: () => DEFAULT_PARAMS
-  },
-  {
-    key: "macro_correlation",
-    strategyName: "macro_intermarket",
-    displayName: "Macro Correlation & Intermarket Analysis",
-    description: "Trading based on relationships between correlated instruments (e.g. Gold vs USD strength).",
-    status: "not_implemented",
-    limitationNote:
-      "The backtesting engine evaluates one symbol at a time. Multi-instrument correlation analysis needs a new joint-analysis layer that doesn't exist yet.",
-    suggestedInterval: "1day",
-    buildRuleGroups: () => EMPTY_RULES,
-    buildParams: () => DEFAULT_PARAMS
   }
 ];

@@ -47,3 +47,13 @@ def load_latest_model(model_name: str):
     model = joblib.load(model_path)
     metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
     return model, metadata
+
+
+def has_model(model_name: str) -> bool:
+    directory = _model_dir(model_name)
+    return (directory / "latest.json").exists()
+
+
+def get_model_metadata(model_name: str) -> dict | None:
+    _, metadata = load_latest_model(model_name)
+    return metadata

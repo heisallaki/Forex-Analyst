@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, require_permission
+from app.api.deps import get_db_session, require_permission, require_verified
 from app.application.dto.paper_trading_dto import (
     CloseTradeRequest,
     CreatePortfolioRequest,
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/paper", tags=["paper-trading"])
 async def create_portfolio(
     payload: CreatePortfolioRequest,
     current_user: Annotated[User, Depends(require_permission("manage_strategies"))],
+    verified_user: Annotated[User, Depends(require_verified())],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> PortfolioResponse:
     repository = SqlAlchemyPaperTradingRepository(session)
@@ -76,6 +77,7 @@ async def portfolio_performance(
 async def open_trade(
     payload: OpenTradeRequest,
     current_user: Annotated[User, Depends(require_permission("manage_strategies"))],
+    verified_user: Annotated[User, Depends(require_verified())],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> TradeResponse:
     repository = SqlAlchemyPaperTradingRepository(session)

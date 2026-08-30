@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     EXECUTION_MAX_POSITION_SIZE: float = 10000.0
     EXECUTION_MAX_OPEN_POSITIONS: int = 3
     EXECUTION_MAX_DAILY_LOSS_PCT: float = 5.0
+    VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
 
 
 settings = Settings()
