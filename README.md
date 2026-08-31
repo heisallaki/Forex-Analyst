@@ -16,7 +16,7 @@ This is not a signal-selling service, a "guaranteed win" bot, or a gambling tool
 
 **Free and open-source by default.** Every tool, library, and service used in this project was chosen because a genuinely free option existed and was sufficient. Core functionality has never depended on a paid subscription, from the database to the AI models to the market data feed.
 
-**No unnecessary infrastructure.** No Docker Desktop, no proprietary cloud lock-in, no license fees. Clone this repository and run the entire stack on a personal laptop.
+**No unnecessary infrastructure.** No proprietary cloud lock-in, no license fees. Clone this repository and run the entire stack on a personal laptop.
 
 **Built one module at a time.** The system was developed and documented in eleven discrete, testable phases — project scaffolding, authentication, market data, the database layer, feature engineering, backtesting, the AI engine, the decision engine, paper trading, an (intentionally disabled) execution engine, and finally this dashboard.
 
@@ -38,14 +38,12 @@ This is not a signal-selling service, a "guaranteed win" bot, or a gambling tool
 - **Database:** PostgreSQL with TimescaleDB for time-series market data
 - **AI/ML:** scikit-learn, XGBoost, LightGBM, pandas, NumPy
 - **Real-time:** WebSockets, Redis pub/sub
-- **Infrastructure:** Native local development, GitHub Actions — no Docker Desktop, no paid cloud dependency anywhere
-
-See `PROJECT.md` for the exact database schema, API reference, environment setup, and known limitations — that document reflects the final, complete state of the build.
+- **Infrastructure:** Native local development, GitHub Actions, no paid cloud dependency anywhere
 
 ## Status
 
-Feature-complete across all 11 planned phases. Automated test coverage is the clear next priority beyond the original plan — see `PROJECT.md`'s Technical Debt section.
+Feature-complete.
 
 ## License
 
-To be determined.
+MIT License

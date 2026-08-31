@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "@/app/routes/ProtectedRoute";
 import { AppLayout } from "@/app/layout/AppLayout";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
+import { NotFoundPage } from "@/features/notfound/pages/NotFoundPage";
 
 const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() =>
@@ -68,6 +69,7 @@ export function AppRouter() {
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );
