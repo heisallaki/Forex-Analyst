@@ -61,7 +61,6 @@ export function AIAnalysisPage() {
     if (symbol) {
       loadModelStatus();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, interval]);
 
   const handleSymbolChange = (value: string) => {
@@ -119,7 +118,13 @@ export function AIAnalysisPage() {
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <PageHeader title="AI Analysis" subtitle="Explainable predictions and recommendations, never a bare buy/sell" />
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-        <TextField select label="Symbol" value={symbol} onChange={(e) => handleSymbolChange(e.target.value)} sx={{ minWidth: 160 }}>
+        <TextField
+          select
+          label="Symbol"
+          value={instruments.includes(symbol) ? symbol : ""}
+          onChange={(e) => handleSymbolChange(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
           {instruments.map((instrument) => (
             <MenuItem key={instrument} value={instrument}>
               {instrument}

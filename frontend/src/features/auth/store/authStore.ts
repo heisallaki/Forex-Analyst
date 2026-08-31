@@ -26,3 +26,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, accessToken: null, refreshToken: null });
   }
 }));
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    const relevantKeys = ["auth_user", "auth_access_token", "auth_refresh_token"];
+    if (event.key !== null && !relevantKeys.includes(event.key)) {
+      return;
+    }
+    const accessToken = localStorage.getItem("auth_access_token");
+    const refreshToken = localStorage.getItem("auth_refresh_token");
+    const userRaw = localStorage.getItem("auth_user");
+    const user = userRaw ? (JSON.parse(userRaw) as AuthUser) : null;
+    useAuthStore.setState({ user, accessToken, refreshToken });
+  });
+}

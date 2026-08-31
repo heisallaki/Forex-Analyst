@@ -8,14 +8,17 @@ interface PriceTickerProps {
   status: MarketSocketStatus;
 }
 
-function badgeFor(hasTick: boolean, status: MarketSocketStatus): { label: string; color: "success" | "warning" | "default" } {
+function badgeFor(hasTick: boolean, status: MarketSocketStatus): { label: string; color: "success" | "warning" | "default" | "error" } {
   if (hasTick) {
     return { label: "live", color: "success" };
+  }
+  if (status === "misconfigured") {
+    return { label: "config error", color: "error" };
   }
   if (status === "connecting") {
     return { label: "connecting", color: "default" };
   }
-  if (status === "error" || status === "closed") {
+  if (status === "closed") {
     return { label: "reconnecting", color: "warning" };
   }
   return { label: "no data yet", color: "warning" };

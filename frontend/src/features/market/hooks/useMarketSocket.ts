@@ -3,10 +3,11 @@ import { PriceTick } from "@/features/market/types";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { refreshAccessToken } from "@/shared/api/httpClient";
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL as string;
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL as string | undefined;
 const AUTH_CLOSE_CODES = [4401, 4403];
+const MAX_RECONNECT_DELAY_MS = 20000;
 
-export type MarketSocketStatus = "connecting" | "open" | "closed" | "error";
+export type MarketSocketStatus = "connecting" | "open" | "closed" | "misconfigured";
 
 export function useMarketSocket() {
   const [ticks, setTicks] = useState<Record<string, PriceTick>>({});
@@ -21,16 +22,26 @@ export function useMarketSocket() {
       return;
     }
 
+    if (!WS_BASE_URL) {
+      console.error(
+        "VITE_WS_BASE_URL is not set. Add it to frontend/.env (e.g. ws://localhost:8000/api/v1) and fully restart `npm run dev` — Vite does not hot-reload env files."
+      );
+      setStatus("misconfigured");
+      return;
+    }
+
     let cancelled = false;
 
-    const connect = async (tokenOverride?: string) => {
+    const connect = (tokenOverride?: string) => {
       if (cancelled) {
         return;
       }
       const tokenToUse = tokenOverride ?? useAuthStore.getState().accessToken;
       if (!tokenToUse) {
+        setStatus("closed");
         return;
       }
+
       setStatus("connecting");
       const socket = new WebSocket(`${WS_BASE_URL}/market/ws/prices?token=${tokenToUse}`);
       socketRef.current = socket;
@@ -52,21 +63,32 @@ export function useMarketSocket() {
       };
 
       socket.onerror = () => {
-        setStatus("error");
+        if (import.meta.env.DEV) {
+          console.warn("Market WebSocket error event fired (a close event will follow with the real reason)");
+        }
       };
 
       socket.onclose = (event) => {
         if (cancelled) {
           return;
         }
+        if (import.meta.env.DEV) {
+          console.warn(`Market WebSocket closed: code=${event.code} reason="${event.reason || "none"}"`);
+        }
         setStatus("closed");
-        const delay = Math.min(1000 * 2 ** reconnectAttempt.current, 15000);
+
+        const delay = Math.min(1000 * 2 ** reconnectAttempt.current, MAX_RECONNECT_DELAY_MS);
         reconnectAttempt.current += 1;
+        const isAuthFailure = AUTH_CLOSE_CODES.includes(event.code);
 
         timeoutRef.current = setTimeout(async () => {
-          if (AUTH_CLOSE_CODES.includes(event.code)) {
+          if (isAuthFailure) {
             const freshToken = await refreshAccessToken();
-            connect(freshToken ?? undefined);
+            if (freshToken) {
+              connect(freshToken);
+            } else {
+              setStatus("closed");
+            }
           } else {
             connect();
           }

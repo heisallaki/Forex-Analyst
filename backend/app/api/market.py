@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
@@ -27,6 +28,8 @@ from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
 from app.infrastructure.market_data.twelve_data_stream import MARKET_TICKS_CHANNEL
 from app.infrastructure.repositories.market_repository_impl import SqlAlchemyMarketRepository
 from app.infrastructure.repositories.user_repository_impl import SqlAlchemyUserRepository
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/market", tags=["market"])
 
@@ -87,10 +90,16 @@ async def prices_websocket(websocket: WebSocket) -> None:
 
     async def sender() -> None:
         while True:
-            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-            if message is not None:
-                await websocket.send_text(message["data"])
-            await asyncio.sleep(0.01)
+            try:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message is not None:
+                    await websocket.send_text(message["data"])
+                await asyncio.sleep(0.01)
+            except (WebSocketDisconnect, asyncio.CancelledError):
+                raise
+            except Exception as error:
+                logger.warning("Market WebSocket sender hiccup for user %s: %s", user.id, error)
+                await asyncio.sleep(1.0)
 
     async def receiver() -> None:
         while True:
@@ -100,9 +109,13 @@ async def prices_websocket(websocket: WebSocket) -> None:
     receiver_task = asyncio.create_task(receiver())
 
     try:
-        _, pending = await asyncio.wait(
+        done, pending = await asyncio.wait(
             {sender_task, receiver_task}, return_when=asyncio.FIRST_COMPLETED
         )
+        for task in done:
+            error = task.exception() if not task.cancelled() else None
+            if error is not None and not isinstance(error, WebSocketDisconnect):
+                logger.warning("Market WebSocket connection ending for user %s: %s", user.id, error)
         for task in pending:
             task.cancel()
     except WebSocketDisconnect:
@@ -112,3 +125,7 @@ async def prices_websocket(websocket: WebSocket) -> None:
         receiver_task.cancel()
         await pubsub.unsubscribe(MARKET_TICKS_CHANNEL)
         await pubsub.close()
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass

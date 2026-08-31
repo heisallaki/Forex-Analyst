@@ -25,6 +25,7 @@ import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { humanizeSnakeCase } from "@/shared/utils/formatLabel";
 
 export function SignalsPage() {
   const [signals, setSignals] = useState<SignalListItem[]>([]);
@@ -45,7 +46,6 @@ export function SignalsPage() {
     load()
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showHidden]);
 
   const toggleSelected = (id: string) => {
@@ -173,7 +173,7 @@ export function SignalsPage() {
                   />
                 </TableCell>
                 <TableCell>{(signal.confidence * 100).toFixed(0)}%</TableCell>
-                <TableCell>{String(signal.reasoning?.source ?? "backtest")}</TableCell>
+                <TableCell>{humanizeSnakeCase(String(signal.reasoning?.source ?? "backtest"))}</TableCell>
                 <TableCell>{new Date(signal.created_at).toLocaleString()}</TableCell>
                 <TableCell>{signal.hidden_at ? <Chip size="small" label="hidden" /> : null}</TableCell>
               </TableRow>

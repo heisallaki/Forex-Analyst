@@ -88,11 +88,25 @@ export function ChartsPage() {
     setPreference("charts_interval", value);
   };
 
+  const statusLabel = liveTick
+    ? "live"
+    : socketStatus === "misconfigured"
+      ? "config error"
+      : socketStatus === "connecting"
+        ? "connecting"
+        : "reconnecting";
+
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, display: "flex", flexDirection: "column", gap: 3 }}>
       <PageHeader title="Charts" subtitle="Historical candles, with the current bar updated live" />
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-        <TextField select label="Symbol" value={symbol} onChange={(e) => handleSymbolChange(e.target.value)} sx={{ minWidth: 160 }}>
+        <TextField
+          select
+          label="Symbol"
+          value={instruments.includes(symbol) ? symbol : ""}
+          onChange={(e) => handleSymbolChange(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
           {instruments.map((instrument) => (
             <MenuItem key={instrument} value={instrument}>
               {instrument}
@@ -106,12 +120,14 @@ export function ChartsPage() {
             </MenuItem>
           ))}
         </TextField>
-        <Chip
-          size="small"
-          label={liveTick ? "live" : socketStatus === "open" ? "connected, no ticks yet" : socketStatus}
-          color={liveTick ? "success" : "default"}
-        />
+        <Chip size="small" label={statusLabel} color={liveTick ? "success" : socketStatus === "misconfigured" ? "error" : "default"} />
       </Box>
+      {socketStatus === "misconfigured" && (
+        <Alert severity="error">
+          Live price streaming is misconfigured (VITE_WS_BASE_URL is missing). Historical candles below still work; see
+          the browser console for details.
+        </Alert>
+      )}
       {error && <Alert severity="error">{error}</Alert>}
       {loading ? <PageLoadingSkeleton variant="table" /> : <CandlestickChart data={data} liveBar={liveBar} />}
     </Box>
