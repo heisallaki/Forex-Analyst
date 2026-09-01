@@ -30,10 +30,9 @@ async def request_account_deletion_use_case(
     send_email(
         email,
         "Confirm Forex Analyst account deletion",
-        f"Your account deletion confirmation code is {code}. It expires in "(
-            f"{settings.VERIFICATION_CODE_EXPIRE_MINUTES} minutes. "
-            "If you did not request this, ignore this email."
-        ),
+        f"Your account deletion confirmation code is {code}. "
+        f"It expires in {settings.VERIFICATION_CODE_EXPIRE_MINUTES} minutes. "
+        "If you did not request this, ignore this email.",
     )
 
 
