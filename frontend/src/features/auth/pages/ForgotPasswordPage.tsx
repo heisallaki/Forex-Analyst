@@ -11,7 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { forgotPassword, resetPassword } from "@/features/auth/api/authApi";
 import { PasswordField } from "@/shared/ui/PasswordField";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 import TextField from "@mui/material/TextField";
 
 export function ForgotPasswordPage() {
