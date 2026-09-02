@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   CardContent,
-  Grid,
   CircularProgress,
   Table,
   TableHead,
@@ -17,12 +16,13 @@ import {
   Chip,
   Tooltip
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from "recharts";
 import { BacktestRunResponse, runBacktest } from "@/features/backtest/api/backtestApi";
 import { getMarketStatus } from "@/features/market/api/marketApi";
 import { STRATEGY_PRESETS } from "@/features/strategies/strategyPresets";
 import { PageHeader } from "@/shared/ui/PageHeader";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 
 const SELECTABLE_PRESETS = STRATEGY_PRESETS.filter((preset) => preset.status !== "not_implemented");
 const DISABLED_PRESETS = STRATEGY_PRESETS.filter((preset) => preset.status === "not_implemented");
@@ -87,7 +87,7 @@ export function BacktestPage() {
       <Card>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField select fullWidth label="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)}>
                 {instruments.map((instrument) => (
                   <MenuItem key={instrument} value={instrument}>
@@ -96,7 +96,7 @@ export function BacktestPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={8}>
+            <Grid size={{ xs: 12, sm: 8 }}>
               <TextField select fullWidth label="Strategy" value={presetKey} onChange={(e) => setPresetKey(e.target.value)}>
                 {SELECTABLE_PRESETS.map((preset) => (
                   <MenuItem key={preset.key} value={preset.key}>
@@ -111,7 +111,7 @@ export function BacktestPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Typography variant="body2" color="text.secondary">
                 {activePreset.description}
               </Typography>
@@ -123,7 +123,7 @@ export function BacktestPage() {
             </Grid>
             {activePreset.key === "range_mean_reversion" && (
               <>
-                <Grid item xs={12} sm={4}>
+                <Grid size={{ xs: 12, sm: 4 }}>
                   <TextField
                     fullWidth
                     type="number"
@@ -132,7 +132,7 @@ export function BacktestPage() {
                     onChange={(e) => setRsiOversold(Number(e.target.value))}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid size={{ xs: 12, sm: 4 }}>
                   <TextField
                     fullWidth
                     type="number"
@@ -143,7 +143,7 @@ export function BacktestPage() {
                 </Grid>
               </>
             )}
-            <Grid item xs={12} sm={4} sx={{ display: "flex", alignItems: "center" }}>
+            <Grid size={{ xs: 12, sm: 4 }} sx={{ display: "flex", alignItems: "center" }}>
               <Button variant="contained" onClick={handleRun} disabled={loading} fullWidth>
                 {loading ? <CircularProgress size={22} color="inherit" /> : "Run backtest"}
               </Button>
@@ -163,13 +163,13 @@ export function BacktestPage() {
                 </Tooltip>
               </Box>
               <Grid container spacing={2}>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Typography variant="body2" color="text.secondary">
                     Total trades
                   </Typography>
                   <Typography variant="h6">{intervalResult.statistics.total_trades}</Typography>
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Typography variant="body2" color="text.secondary">
                     Win rate
                   </Typography>
@@ -177,7 +177,7 @@ export function BacktestPage() {
                     {intervalResult.statistics.win_rate !== null ? `${intervalResult.statistics.win_rate.toFixed(1)}%` : "—"}
                   </Typography>
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Typography variant="body2" color="text.secondary">
                     Profit factor
                   </Typography>
@@ -187,7 +187,7 @@ export function BacktestPage() {
                       : "—"}
                   </Typography>
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Typography variant="body2" color="text.secondary">
                     Max drawdown
                   </Typography>

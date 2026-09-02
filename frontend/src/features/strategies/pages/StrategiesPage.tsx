@@ -5,7 +5,7 @@ import { StrategyListItem, listStrategies } from "@/features/strategies/api/stra
 import { STRATEGY_PRESETS } from "@/features/strategies/strategyPresets";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 
 export function StrategiesPage() {
   const [dbStrategies, setDbStrategies] = useState<StrategyListItem[]>([]);
@@ -18,7 +18,7 @@ export function StrategiesPage() {
       .then(setDbStrategies)
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [showToast]);
 
   if (loading) {
     return <PageLoadingSkeleton variant="table" />;

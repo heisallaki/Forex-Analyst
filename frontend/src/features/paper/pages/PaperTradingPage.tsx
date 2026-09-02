@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   CardContent,
-  Grid2 as Grid,
   TextField,
   Button,
   MenuItem,
@@ -17,6 +16,7 @@ import {
   Tooltip,
   IconButton
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Portfolio,
@@ -31,7 +31,7 @@ import {
 } from "@/features/paper/api/paperApi";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 
 export function PaperTradingPage() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);

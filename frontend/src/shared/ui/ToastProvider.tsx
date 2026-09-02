@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { ReactNode, createContext, useCallback, useMemo, useState, useEffect } from "react";
 import { Alert, AlertColor, Snackbar } from "@mui/material";
 
 interface ToastMessage {
@@ -7,11 +7,11 @@ interface ToastMessage {
   severity: AlertColor;
 }
 
-interface ToastContextValue {
+export interface ToastContextValue {
   showToast: (message: string, severity?: AlertColor) => void;
 }
 
-const ToastContext = createContext<ToastContextValue | undefined>(undefined);
+export const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<ToastMessage[]>([]);
@@ -51,12 +51,4 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       </Snackbar>
     </ToastContext.Provider>
   );
-}
-
-export function useToast(): ToastContextValue {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error("useToast must be used within a ToastProvider");
-  }
-  return context;
 }

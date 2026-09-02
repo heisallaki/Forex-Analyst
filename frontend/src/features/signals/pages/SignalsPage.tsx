@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Table,
@@ -24,7 +24,7 @@ import {
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 import { humanizeSnakeCase } from "@/shared/utils/formatLabel";
 
 export function SignalsPage() {
@@ -35,18 +35,18 @@ export function SignalsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { showToast } = useToast();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const result = await listSignals(null, 100, showHidden);
     setSignals(result);
     setSelected([]);
-  };
+  }, [showHidden]);
 
   useEffect(() => {
     setLoading(true);
     load()
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
-  }, [showHidden]);
+  }, [load, showToast]);
 
   const toggleSelected = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));

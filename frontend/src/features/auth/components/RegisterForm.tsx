@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { register as registerUser } from "@/features/auth/api/authApi";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { PasswordField } from "@/shared/ui/PasswordField";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 
 const registerSchema = z.object({
   email: z.string().email("Enter a valid email address"),

@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Portfolio, PortfolioPerformance, getPortfolioPerformance, listPortfolios } from "@/features/paper/api/paperApi";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 
 export function AnalyticsPage() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -24,7 +24,7 @@ export function AnalyticsPage() {
       })
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     if (selectedPortfolioId) {
@@ -32,7 +32,7 @@ export function AnalyticsPage() {
         .then(setPerformance)
         .catch((err) => showToast((err as Error).message, "error"));
     }
-  }, [selectedPortfolioId]);
+  }, [selectedPortfolioId, showToast]);
 
   if (loading) {
     return <PageLoadingSkeleton />;

@@ -12,8 +12,8 @@ import {
   ToggleButton,
   Typography,
   Tooltip,
-  Grid2,
   TextField,
+  Grid2,
   Button,
   CircularProgress
 } from "@mui/material";
@@ -38,7 +38,7 @@ import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { ACCENT_COLOR_OPTIONS } from "@/app/theme";
 import { ThemeModePreference, useThemeStore } from "@/app/theme/themeStore";
 import { useAuthStore } from "@/features/auth/store/authStore";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 
 const MODE_OPTIONS: { value: ThemeModePreference; label: string; icon: ReactNode }[] = [
   { value: "light", label: "Light", icon: <LightModeIcon fontSize="small" /> },
@@ -74,7 +74,7 @@ export function SettingsPage() {
     loadProfile()
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [showToast]);
 
   const handleVerify = async () => {
     setVerifying(true);

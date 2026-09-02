@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   TextField,
@@ -28,7 +28,7 @@ import {
   getRecommendation,
   trainModels
 } from "@/features/ai/api/aiApi";
-import { useToast } from "@/shared/ui/ToastProvider";
+import { useToast } from "@/shared/ui/useToast";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { getPreference, setPreference } from "@/shared/utils/userPreferences";
 
@@ -51,17 +51,17 @@ export function AIAnalysisPage() {
       .catch(() => undefined);
   }, []);
 
-  const loadModelStatus = () => {
+  const loadModelStatus = useCallback(() => {
     getModelStatus(symbol, interval)
       .then(setModelStatus)
       .catch(() => setModelStatus(null));
-  };
+  }, [symbol, interval]);
 
   useEffect(() => {
     if (symbol) {
       loadModelStatus();
     }
-  }, [symbol, interval]);
+  }, [symbol, loadModelStatus]);
 
   const handleSymbolChange = (value: string) => {
     setSymbol(value);
