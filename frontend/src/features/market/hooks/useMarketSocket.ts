@@ -16,6 +16,7 @@ export function useMarketSocket() {
   const reconnectAttempt = useRef(0);
   const socketRef = useRef<WebSocket | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectingRef = useRef(false);
 
   useEffect(() => {
     if (!accessToken) {
@@ -24,7 +25,7 @@ export function useMarketSocket() {
 
     if (!WS_BASE_URL) {
       console.error(
-        "VITE_WS_BASE_URL is not set. Add it to frontend/.env (e.g. ws://localhost:8000/api/v1) and fully restart `npm run dev` — Vite does not hot-reload env files."
+        "VITE_WS_BASE_URL is not set. Add it to frontend/.env (e.g. wss://your-backend-host/api/v1) and fully restart/rebuild — Vite does not hot-reload env files."
       );
       setStatus("misconfigured");
       return;
@@ -32,8 +33,19 @@ export function useMarketSocket() {
 
     let cancelled = false;
 
+    const closeSocketSafely = (socket: WebSocket | null) => {
+      if (!socket) {
+        return;
+      }
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.onopen = () => socket.close();
+      } else if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
+    };
+
     const connect = (tokenOverride?: string) => {
-      if (cancelled) {
+      if (cancelled || connectingRef.current) {
         return;
       }
       const tokenToUse = tokenOverride ?? useAuthStore.getState().accessToken;
@@ -42,11 +54,13 @@ export function useMarketSocket() {
         return;
       }
 
+      connectingRef.current = true;
       setStatus("connecting");
       const socket = new WebSocket(`${WS_BASE_URL}/market/ws/prices?token=${tokenToUse}`);
       socketRef.current = socket;
 
       socket.onopen = () => {
+        connectingRef.current = false;
         reconnectAttempt.current = 0;
         setStatus("open");
       };
@@ -69,7 +83,8 @@ export function useMarketSocket() {
       };
 
       socket.onclose = (event) => {
-        if (cancelled) {
+        connectingRef.current = false;
+        if (cancelled || socketRef.current !== socket) {
           return;
         }
         if (import.meta.env.DEV) {
@@ -82,6 +97,9 @@ export function useMarketSocket() {
         const isAuthFailure = AUTH_CLOSE_CODES.includes(event.code);
 
         timeoutRef.current = setTimeout(async () => {
+          if (cancelled) {
+            return;
+          }
           if (isAuthFailure) {
             const freshToken = await refreshAccessToken();
             if (freshToken) {
@@ -100,10 +118,11 @@ export function useMarketSocket() {
 
     return () => {
       cancelled = true;
+      connectingRef.current = false;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      socketRef.current?.close();
+      closeSocketSafely(socketRef.current);
     };
   }, [accessToken]);
 
