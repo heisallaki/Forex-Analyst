@@ -1,59 +1,56 @@
-import json
-from datetime import UTC, datetime
-from pathlib import Path
+import io
+from datetime import datetime, timezone
 
 import joblib
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-
-
-def _model_dir(model_name: str) -> Path:
-    directory = Path(settings.MODEL_STORAGE_PATH) / model_name
-    directory.mkdir(parents=True, exist_ok=True)
-    return directory
+from app.infrastructure.database.models.trained_model_model import TrainedModelModel
 
 
-def save_model(model_name: str, model, metadata: dict) -> str:
-    directory = _model_dir(model_name)
-    version = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+async def save_model(session: AsyncSession, model_name: str, model, metadata: dict) -> str:
+    version = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
 
-    model_path = directory / f"{version}.joblib"
-    joblib.dump(model, model_path)
+    buffer = io.BytesIO()
+    joblib.dump(model, buffer)
 
     metadata_with_version = dict(metadata)
     metadata_with_version["version"] = version
-    metadata_with_version["trained_at"] = datetime.now(UTC).isoformat()
-    metadata_path = directory / f"{version}.json"
-    metadata_path.write_text(json.dumps(metadata_with_version, indent=2))
+    metadata_with_version["trained_at"] = datetime.now(timezone.utc).isoformat()
 
-    latest_pointer_path = directory / "latest.json"
-    latest_pointer_path.write_text(json.dumps({"version": version}))
-
+    db_model = TrainedModelModel(
+        model_name=model_name,
+        version=version,
+        model_blob=buffer.getvalue(),
+        model_metadata=metadata_with_version,
+    )
+    session.add(db_model)
+    await session.commit()
     return version
 
 
-def load_latest_model(model_name: str):
-    directory = _model_dir(model_name)
-    latest_pointer_path = directory / "latest.json"
-    if not latest_pointer_path.exists():
+async def load_latest_model(session: AsyncSession, model_name: str):
+    result = await session.execute(
+        select(TrainedModelModel)
+        .where(TrainedModelModel.model_name == model_name)
+        .order_by(TrainedModelModel.created_at.desc())
+        .limit(1)
+    )
+    db_model = result.scalar_one_or_none()
+    if db_model is None:
         return None, None
 
-    version = json.loads(latest_pointer_path.read_text())["version"]
-    model_path = directory / f"{version}.joblib"
-    metadata_path = directory / f"{version}.json"
-    if not model_path.exists():
-        return None, None
-
-    model = joblib.load(model_path)
-    metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
-    return model, metadata
+    model = joblib.load(io.BytesIO(db_model.model_blob))
+    return model, db_model.model_metadata
 
 
-def has_model(model_name: str) -> bool:
-    directory = _model_dir(model_name)
-    return (directory / "latest.json").exists()
+async def has_model(session: AsyncSession, model_name: str) -> bool:
+    result = await session.execute(
+        select(TrainedModelModel.id).where(TrainedModelModel.model_name == model_name).limit(1)
+    )
+    return result.scalar_one_or_none() is not None
 
 
-def get_model_metadata(model_name: str) -> dict | None:
-    _, metadata = load_latest_model(model_name)
+async def get_model_metadata(session: AsyncSession, model_name: str) -> dict | None:
+    _, metadata = await load_latest_model(session, model_name)
     return metadata
