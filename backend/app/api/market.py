@@ -84,9 +84,17 @@ async def prices_websocket(websocket: WebSocket) -> None:
         return
 
     await websocket.accept()
-    redis_client = get_redis_client()
-    pubsub = redis_client.pubsub()
-    await pubsub.subscribe(MARKET_TICKS_CHANNEL)
+
+    try:
+        redis_client = get_redis_client()
+        pubsub = redis_client.pubsub()
+        await pubsub.subscribe(MARKET_TICKS_CHANNEL)
+    except Exception as error:
+        logger.error(
+            "Market WebSocket could not subscribe to Redis for user %s: %s", user.id, error
+        )
+        await websocket.close(code=1011, reason="Upstream data connection unavailable")
+        return
 
     async def sender() -> None:
         while True:
@@ -123,8 +131,11 @@ async def prices_websocket(websocket: WebSocket) -> None:
     finally:
         sender_task.cancel()
         receiver_task.cancel()
-        await pubsub.unsubscribe(MARKET_TICKS_CHANNEL)
-        await pubsub.close()
+        try:
+            await pubsub.unsubscribe(MARKET_TICKS_CHANNEL)
+            await pubsub.close()
+        except Exception:
+            pass
         try:
             await websocket.close()
         except RuntimeError:

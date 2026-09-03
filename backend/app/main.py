@@ -1,8 +1,10 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
@@ -19,6 +21,7 @@ from app.infrastructure.market_data.position_monitor import run_position_monitor
 from app.infrastructure.market_data.twelve_data_stream import run_market_stream
 
 configure_logging(settings.APP_DEBUG)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -44,6 +47,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error(
+        "Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True
+    )
+
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin and origin in settings.CORS_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+
+    detail = str(exc) if settings.APP_DEBUG else "Internal server error"
+    return JSONResponse(status_code=500, content={"detail": detail}, headers=headers)
+
 
 app.include_router(health_router, prefix=settings.API_PREFIX)
 app.include_router(auth_router, prefix=settings.API_PREFIX)
