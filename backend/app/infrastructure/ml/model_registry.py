@@ -1,5 +1,5 @@
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import joblib
 from sqlalchemy import select
@@ -9,14 +9,14 @@ from app.infrastructure.database.models.trained_model_model import TrainedModelM
 
 
 async def save_model(session: AsyncSession, model_name: str, model, metadata: dict) -> str:
-    version = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    version = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
 
     buffer = io.BytesIO()
     joblib.dump(model, buffer)
 
     metadata_with_version = dict(metadata)
     metadata_with_version["version"] = version
-    metadata_with_version["trained_at"] = datetime.now(timezone.utc).isoformat()
+    metadata_with_version["trained_at"] = datetime.now(UTC).isoformat()
 
     db_model = TrainedModelModel(
         model_name=model_name,

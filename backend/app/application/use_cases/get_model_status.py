@@ -13,7 +13,9 @@ MODEL_KEYS = [
 ]
 
 
-async def get_model_status_use_case(symbol: str, interval: str, session: AsyncSession) -> ModelStatusResponse:
+async def get_model_status_use_case(
+    symbol: str, interval: str, session: AsyncSession
+) -> ModelStatusResponse:
     key = symbol.replace("/", "_") + f"_{interval}"
     entries: list[ModelStatusEntry] = []
     for model_key in MODEL_KEYS:

@@ -4,13 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, require_admin, require_permission, require_verified
-from app.application.dto.ai_dto import ModelStatusResponse, PredictMarketResponse, TrainModelsRequest, TrainModelsResponse
+from app.application.dto.ai_dto import (
+    ModelStatusResponse,
+    PredictMarketResponse,
+    TrainModelsRequest,
+    TrainModelsResponse,
+)
 from app.application.use_cases.get_model_status import get_model_status_use_case
 from app.application.use_cases.predict_market import predict_market_use_case
 from app.application.use_cases.train_models import train_models_use_case
 from app.domain.entities.user import User
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
-from app.infrastructure.repositories.ai_prediction_repository_impl import SqlAlchemyAIPredictionRepository
+from app.infrastructure.repositories.ai_prediction_repository_impl import (
+    SqlAlchemyAIPredictionRepository,
+)
 from app.infrastructure.repositories.market_repository_impl import SqlAlchemyMarketRepository
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -52,6 +59,8 @@ async def predict(
     prediction_repository = SqlAlchemyAIPredictionRepository(session)
     client = TwelveDataClient()
     try:
-        return await predict_market_use_case(symbol, interval, market_repository, prediction_repository, client)
+        return await predict_market_use_case(
+            symbol, interval, market_repository, prediction_repository, client
+        )
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))

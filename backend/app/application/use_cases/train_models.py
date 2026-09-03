@@ -49,8 +49,10 @@ async def train_models_use_case(
 
     if len(dataset) < payload.minimum_samples:
         raise ValueError(
-            f"Not enough training samples ({len(dataset)}) for {payload.symbol} {payload.interval}; "
-            f"need at least {payload.minimum_samples}. Increase limit or lower minimum_samples."
+            f"Not enough training samples ({len(dataset)}) for "
+            f"{payload.symbol} {payload.interval}; "
+            f"need at least {payload.minimum_samples}. "
+            "Increase limit or lower minimum_samples."
         )
 
     regime_labels = label_market_regimes(dataset)
@@ -59,29 +61,47 @@ async def train_models_use_case(
 
     trend_model, trend_metrics = train_trend_classifier(dataset)
     version = await save_model(session, f"trend_classifier_{key}", trend_model, trend_metrics)
-    results.append(ModelTrainingResult(model_name="trend_classifier", version=version, metrics=trend_metrics))
+    results.append(
+        ModelTrainingResult(model_name="trend_classifier", version=version, metrics=trend_metrics)
+    )
 
     opportunity_model, opportunity_metrics = train_opportunity_model(dataset)
-    version = await save_model(session, f"entry_quality_{key}", opportunity_model, opportunity_metrics)
-    results.append(ModelTrainingResult(model_name="entry_quality", version=version, metrics=opportunity_metrics))
+    version = await save_model(
+        session, f"entry_quality_{key}", opportunity_model, opportunity_metrics
+    )
+    results.append(
+        ModelTrainingResult(
+            model_name="entry_quality", version=version, metrics=opportunity_metrics
+        )
+    )
 
     confidence_model, confidence_metrics = train_confidence_model(dataset)
-    version = await save_model(session, f"confidence_scoring_{key}", confidence_model, confidence_metrics)
+    version = await save_model(
+        session, f"confidence_scoring_{key}", confidence_model, confidence_metrics
+    )
     results.append(
-        ModelTrainingResult(model_name="confidence_scoring", version=version, metrics=confidence_metrics)
+        ModelTrainingResult(
+            model_name="confidence_scoring", version=version, metrics=confidence_metrics
+        )
     )
 
     risk_model, risk_metrics = train_risk_model(dataset)
     version = await save_model(session, f"risk_prediction_{key}", risk_model, risk_metrics)
-    results.append(ModelTrainingResult(model_name="risk_prediction", version=version, metrics=risk_metrics))
+    results.append(
+        ModelTrainingResult(model_name="risk_prediction", version=version, metrics=risk_metrics)
+    )
 
     reward_model, reward_metrics = train_reward_model(dataset)
     version = await save_model(session, f"reward_prediction_{key}", reward_model, reward_metrics)
-    results.append(ModelTrainingResult(model_name="reward_prediction", version=version, metrics=reward_metrics))
+    results.append(
+        ModelTrainingResult(model_name="reward_prediction", version=version, metrics=reward_metrics)
+    )
 
     regime_model, regime_metrics = train_regime_model(dataset, regime_labels)
     version = await save_model(session, f"market_regime_{key}", regime_model, regime_metrics)
-    results.append(ModelTrainingResult(model_name="market_regime", version=version, metrics=regime_metrics))
+    results.append(
+        ModelTrainingResult(model_name="market_regime", version=version, metrics=regime_metrics)
+    )
 
     return TrainModelsResponse(
         symbol=payload.symbol,
