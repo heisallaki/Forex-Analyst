@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
@@ -17,6 +19,7 @@ from app.api.market import router as market_router
 from app.api.paper_trading import router as paper_trading_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.core.rate_limit import limiter
 from app.infrastructure.market_data.position_monitor import run_position_monitor
 from app.infrastructure.market_data.twelve_data_stream import run_market_stream
 
@@ -28,6 +31,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     stream_task = asyncio.create_task(run_market_stream())
     monitor_task = asyncio.create_task(run_position_monitor())
+    app.state.stream_task = stream_task
+    app.state.monitor_task = monitor_task
     yield
     stream_task.cancel()
     monitor_task.cancel()
@@ -40,6 +45,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.APP_DEBUG, lifespan=lifespan)
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -51,9 +59,7 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.error(
-        "Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True
-    )
+    logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
 
     origin = request.headers.get("origin")
     headers = {}

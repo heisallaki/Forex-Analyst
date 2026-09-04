@@ -1,49 +1,58 @@
-# Forex AI Analyst
+# FX Analyst
 
-An AI-powered market analyst for Forex and Gold (XAU/USD) — built to monitor markets, explain what it sees, and help you evaluate trading ideas with evidence instead of hype.
+An AI-powered forex and gold market analyst, live at **[forex-analyst.vercel.app](https://forex-analyst.vercel.app/)**.
 
-## What this is
+This isn't a signal-selling bot and it doesn't place trades for you. It watches live currency and gold prices, runs them through a technical feature-engineering pipeline and six locally-trained machine learning models, and produces recommendations you can actually interrogate — trend, confidence, risk, expected reward, the indicators behind the call, and the exact conditions that would invalidate it. If the evidence isn't strong enough, it says so and recommends no trade, instead of forcing a call just because you asked for one.
 
-This project watches live currency and gold price action, runs it through a layered feature-engineering and machine-learning pipeline, and produces analysis you can inspect, question, and backtest. Every recommendation the system makes comes with its reasoning attached: the trend it detected, the indicators that support it, the risk involved, the expected reward, and the conditions under which the idea would be invalidated.
+## What it actually does
 
-## What this is not
+- Streams live prices for major forex pairs and XAU/USD, stores historical candles, and shows them as real candlestick charts
+- Computes its own technical indicators and price-action features (RSI, MACD, ADX, Bollinger Bands, market structure, liquidity sweeps, fair value gaps — all built in-house, no third-party TA library)
+- Runs six machine learning models — trend, entry quality, confidence, risk, reward, and market regime — trained on your own historical data, right in the app
+- Combines all six into one explainable recommendation, never a bare buy/sell
+- Lets you backtest a library of real trading strategies (trend following, SMC/liquidity, range trading, breakout, swing, scalping) against historical data with realistic spread and slippage
+- Gives you a paper trading account with a virtual portfolio, live stop-loss/take-profit execution, and a full trade journal
+- Has a full account system — registration with email verification, password reset, account deletion — all backed by proper JWT auth with rotating refresh tokens
 
-This is not a signal-selling service, a "guaranteed win" bot, or a gambling tool. It does not place trades on your behalf — the execution engine ships disabled by default, with no broker connected at all, and enabling it changes nothing about that, since no broker integration exists yet.
+## Tech stack
 
-## Core principles
+**Frontend:** React 19, TypeScript, Vite, Material UI, TradingView Lightweight Charts, Recharts
+**Backend:** Python, FastAPI, SQLAlchemy, Alembic
+**Database:** PostgreSQL with TimescaleDB (Neon)
+**AI/ML:** scikit-learn, XGBoost, LightGBM, pandas, NumPy — no external AI API, everything runs and trains inside the app itself
+**Real-time:** WebSockets over Redis pub/sub (Upstash)
+**Hosting:** Vercel (frontend), Northflank (backend)
 
-**Explainability over black boxes.** Every AI output separates prediction, analysis, recommendation, and execution as distinct concepts. A model's confidence score is never presented as a promise, and the system explicitly recommends "no trade" when the evidence doesn't clear a minimum confidence and reward-to-risk bar.
+Every tool in this stack is free and open-source. That was a deliberate constraint from day one, not an afterthought.
 
-**Free and open-source by default.** Every tool, library, and service used in this project was chosen because a genuinely free option existed and was sufficient. Core functionality has never depended on a paid subscription, from the database to the AI models to the market data feed.
+## Running it yourself
 
-**No unnecessary infrastructure.** No proprietary cloud lock-in, no license fees. Clone this repository and run the entire stack on a personal laptop.
+You'll need Python 3.12+, Node 20+, PostgreSQL with the TimescaleDB extension, and Redis.
 
-**Built one module at a time.** The system was developed and documented in eleven discrete, testable phases — project scaffolding, authentication, market data, the database layer, feature engineering, backtesting, the AI engine, the decision engine, paper trading, an (intentionally disabled) execution engine, and finally this dashboard.
+```
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
 
-## What's actually in here
+```
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
 
-- Live streaming prices and historical candles for major forex pairs and Gold, via a free-tier market data provider
-- An in-house-built technical indicator and price-action engine (no third-party TA library dependency)
-- A rule-based backtesting engine with realistic spread/slippage/commission modeling and a full statistics suite
-- Six locally-trained ML models (trend, entry quality, confidence, risk, reward, market regime) — no external AI API calls, ever
-- A decision engine that combines those models into an explainable recommendation, never a bare buy/sell
-- A real paper trading simulator with live stop-loss/take-profit execution against streaming prices
-- An architecturally-complete but functionally inert execution engine, ready for a future broker integration that doesn't exist yet
-- A full dashboard tying all of it together
 
-## Technology
+You'll need a free API key from [Twelve Data](https://twelvedata.com) for market data, and a Postgres connection string with the `timescaledb` extension enabled. Fill both into `backend/.env` before starting the backend.
 
-- **Frontend:** React, TypeScript, Vite, Material UI, TradingView Lightweight Charts, Recharts
-- **Backend:** Python, FastAPI, SQLAlchemy, Alembic
-- **Database:** PostgreSQL with TimescaleDB for time-series market data
-- **AI/ML:** scikit-learn, XGBoost, LightGBM, pandas, NumPy
-- **Real-time:** WebSockets, Redis pub/sub
-- **Infrastructure:** Native local development, GitHub Actions, no paid cloud dependency anywhere
+## A few honest notes
 
-## Status
+The free market-data plan restricts live streaming to a small set of "trial" symbols — right now that's EUR/USD and XAU/USD showing live prices, while everything else works fine for historical data, backtesting, and AI analysis, just without a live-updating ticker. Good enough for a personal project; a paid data plan would lift that if it ever needed to.
 
-Feature-complete.
+The execution engine — the part that could place real trades with a real broker — exists architecturally but is disabled by default and has no broker connected. That's intentional. This tool is for analysis, not for handing your account over to an algorithm.
 
 ## License
 
-MIT License
+MIT © 2026 Alvin Kipng'eno Langat

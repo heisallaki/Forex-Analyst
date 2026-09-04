@@ -2,12 +2,13 @@ import asyncio
 import json
 import logging
 import ssl
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import certifi
 import websockets
 
 from app.core.config import settings
+from app.core.system_state import record_tick
 from app.domain.entities.market import Tick
 from app.infrastructure.cache.redis_client import get_redis_client
 from app.infrastructure.database.session import AsyncSessionLocal
@@ -36,7 +37,7 @@ async def _persist_tick(payload: dict) -> None:
         tick = Tick(
             symbol=symbol,
             price=float(price),
-            timestamp=datetime.fromtimestamp(int(raw_timestamp), tz=UTC),
+            timestamp=datetime.fromtimestamp(int(raw_timestamp), tz=timezone.utc),
         )
         async with AsyncSessionLocal() as session:
             repository = SqlAlchemyMarketRepository(session)
@@ -54,6 +55,7 @@ async def run_market_stream() -> None:
     while True:
         try:
             async with websockets.connect(url, ssl=ssl_context) as connection:
+                logger.info("Market stream connected to Twelve Data")
                 await connection.send(
                     json.dumps({"action": "subscribe", "params": {"symbols": symbols}})
                 )
@@ -78,6 +80,7 @@ async def run_market_stream() -> None:
                         continue
 
                     if event == "price":
+                        record_tick()
                         await redis_client.publish(MARKET_TICKS_CHANNEL, json.dumps(payload))
                         symbol = payload.get("symbol")
                         price = payload.get("price")

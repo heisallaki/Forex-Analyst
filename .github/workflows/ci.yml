@@ -9,6 +9,20 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: forex_dev
+          POSTGRES_PASSWORD: changeme
+          POSTGRES_DB: forex_analyst_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,9 +32,15 @@ jobs:
           cd backend
           python -m venv venv
           source venv/bin/activate
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
           pip install ruff
           ruff check .
+      - run: |
+          cd backend
+          source venv/bin/activate
+          pytest --cov=app --cov-report=term-missing
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://forex_dev:changeme@localhost:5432/forex_analyst_test
 
   frontend:
     runs-on: ubuntu-latest
