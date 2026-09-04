@@ -11,11 +11,17 @@ LATEST_ROW = {
 }
 
 
-def _predictions(trend="up", trend_conf=0.9, opportunity=0.9, confidence=0.9, mae=1.0, mfe=3.0, regime="trending"):
+def _predictions(
+    trend="up", trend_conf=0.9, opportunity=0.9, confidence=0.9, mae=1.0, mfe=3.0, regime="trending"
+):
     return {
         "trend_classifier": {
             "predicted_trend": trend,
-            "probabilities": {"up": trend_conf, "down": (1 - trend_conf) / 2, "flat": (1 - trend_conf) / 2},
+            "probabilities": {
+                "up": trend_conf,
+                "down": (1 - trend_conf) / 2,
+                "flat": (1 - trend_conf) / 2,
+            },
         },
         "entry_quality": {"opportunity_probability": opportunity},
         "confidence_scoring": {"target_before_stop_probability": confidence},
@@ -49,6 +55,8 @@ def test_low_reward_risk_ratio_recommends_no_trade():
 
 
 def test_missing_models_produce_no_trade_with_explanation():
-    result = build_recommendation("EUR/USD", "1min", LATEST_ROW, {"trend_classifier": {"error": "model not trained yet"}})
+    result = build_recommendation(
+        "EUR/USD", "1min", LATEST_ROW, {"trend_classifier": {"error": "model not trained yet"}}
+    )
     assert result["action"] == "no_trade"
     assert "not yet trained" in result["reasoning"]

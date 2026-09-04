@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.security import (
     create_access_token,
@@ -49,4 +49,4 @@ def test_refresh_token_hash_is_deterministic():
 
 
 def test_refresh_token_expiry_is_in_the_future():
-    assert refresh_token_expiry() > datetime.now(timezone.utc)
+    assert refresh_token_expiry() > datetime.now(UTC)

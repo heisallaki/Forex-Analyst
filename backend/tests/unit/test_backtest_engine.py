@@ -1,4 +1,9 @@
-from app.domain.services.backtest_engine import Condition, RuleGroup, evaluate_condition, evaluate_rule_group
+from app.domain.services.backtest_engine import (
+    Condition,
+    RuleGroup,
+    evaluate_condition,
+    evaluate_rule_group,
+)
 
 
 def test_evaluate_condition_less_than():

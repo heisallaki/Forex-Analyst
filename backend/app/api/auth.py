@@ -28,13 +28,18 @@ from app.application.use_cases.email_verification import (
     resend_verification_code_use_case,
 )
 from app.application.use_cases.logout_user import logout_user
-from app.application.use_cases.password_reset import confirm_password_reset_use_case, request_password_reset_use_case
+from app.application.use_cases.password_reset import (
+    confirm_password_reset_use_case,
+    request_password_reset_use_case,
+)
 from app.application.use_cases.refresh_token import refresh_access_token
 from app.application.use_cases.register_user import register_user
 from app.core.rate_limit import limiter
 from app.domain.entities.user import User
 from app.infrastructure.repositories.user_repository_impl import SqlAlchemyUserRepository
-from app.infrastructure.repositories.verification_repository_impl import SqlAlchemyVerificationRepository
+from app.infrastructure.repositories.verification_repository_impl import (
+    SqlAlchemyVerificationRepository,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -51,7 +56,9 @@ async def register(
     request: Request,
     payload: RegisterRequest,
     repository: Annotated[SqlAlchemyUserRepository, Depends(get_user_repository)],
-    verification_repository: Annotated[SqlAlchemyVerificationRepository, Depends(get_verification_repository)],
+    verification_repository: Annotated[
+        SqlAlchemyVerificationRepository, Depends(get_verification_repository)
+    ],
 ) -> TokenResponse:
     return await register_user(payload, repository, verification_repository)
 
@@ -100,9 +107,13 @@ async def verify_email(
     payload: VerifyEmailRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     user_repository: Annotated[SqlAlchemyUserRepository, Depends(get_user_repository)],
-    verification_repository: Annotated[SqlAlchemyVerificationRepository, Depends(get_verification_repository)],
+    verification_repository: Annotated[
+        SqlAlchemyVerificationRepository, Depends(get_verification_repository)
+    ],
 ) -> MessageResponse:
-    await confirm_email_verification_use_case(current_user.id, payload.code, verification_repository, user_repository)
+    await confirm_email_verification_use_case(
+        current_user.id, payload.code, verification_repository, user_repository
+    )
     return MessageResponse(message="Email verified successfully")
 
 
@@ -111,9 +122,13 @@ async def verify_email(
 async def resend_verification(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
-    verification_repository: Annotated[SqlAlchemyVerificationRepository, Depends(get_verification_repository)],
+    verification_repository: Annotated[
+        SqlAlchemyVerificationRepository, Depends(get_verification_repository)
+    ],
 ) -> MessageResponse:
-    await resend_verification_code_use_case(current_user.id, current_user.email, verification_repository)
+    await resend_verification_code_use_case(
+        current_user.id, current_user.email, verification_repository
+    )
     return MessageResponse(message="A new verification code has been sent")
 
 
@@ -122,9 +137,13 @@ async def resend_verification(
 async def request_account_deletion(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
-    verification_repository: Annotated[SqlAlchemyVerificationRepository, Depends(get_verification_repository)],
+    verification_repository: Annotated[
+        SqlAlchemyVerificationRepository, Depends(get_verification_repository)
+    ],
 ) -> MessageResponse:
-    await request_account_deletion_use_case(current_user.id, current_user.email, verification_repository)
+    await request_account_deletion_use_case(
+        current_user.id, current_user.email, verification_repository
+    )
     return MessageResponse(message="A confirmation code has been sent to your email")
 
 
@@ -133,9 +152,13 @@ async def confirm_account_deletion(
     payload: ConfirmAccountDeletionRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     user_repository: Annotated[SqlAlchemyUserRepository, Depends(get_user_repository)],
-    verification_repository: Annotated[SqlAlchemyVerificationRepository, Depends(get_verification_repository)],
+    verification_repository: Annotated[
+        SqlAlchemyVerificationRepository, Depends(get_verification_repository)
+    ],
 ) -> MessageResponse:
-    await confirm_account_deletion_use_case(current_user.id, payload.code, verification_repository, user_repository)
+    await confirm_account_deletion_use_case(
+        current_user.id, payload.code, verification_repository, user_repository
+    )
     return MessageResponse(message="Account permanently deleted")
 
 
@@ -145,9 +168,13 @@ async def forgot_password(
     request: Request,
     payload: ForgotPasswordRequest,
     user_repository: Annotated[SqlAlchemyUserRepository, Depends(get_user_repository)],
-    verification_repository: Annotated[SqlAlchemyVerificationRepository, Depends(get_verification_repository)],
+    verification_repository: Annotated[
+        SqlAlchemyVerificationRepository, Depends(get_verification_repository)
+    ],
 ) -> MessageResponse:
-    message = await request_password_reset_use_case(payload.email, user_repository, verification_repository)
+    message = await request_password_reset_use_case(
+        payload.email, user_repository, verification_repository
+    )
     return MessageResponse(message=message)
 
 
@@ -157,9 +184,13 @@ async def reset_password(
     request: Request,
     payload: ResetPasswordRequest,
     user_repository: Annotated[SqlAlchemyUserRepository, Depends(get_user_repository)],
-    verification_repository: Annotated[SqlAlchemyVerificationRepository, Depends(get_verification_repository)],
+    verification_repository: Annotated[
+        SqlAlchemyVerificationRepository, Depends(get_verification_repository)
+    ],
 ) -> MessageResponse:
     await confirm_password_reset_use_case(
         payload.email, payload.code, payload.new_password, user_repository, verification_repository
     )
-    return MessageResponse(message="Password reset successfully. Please log in with your new password.")
+    return MessageResponse(
+        message="Password reset successfully. Please log in with your new password."
+    )

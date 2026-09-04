@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 _last_tick_at: datetime | None = None
 
 
 def record_tick() -> None:
     global _last_tick_at
-    _last_tick_at = datetime.now(timezone.utc)
+    _last_tick_at = datetime.now(UTC)
 
 
 def get_last_tick_at() -> datetime | None:
@@ -15,4 +15,4 @@ def get_last_tick_at() -> datetime | None:
 def seconds_since_last_tick() -> float | None:
     if _last_tick_at is None:
         return None
-    return (datetime.now(timezone.utc) - _last_tick_at).total_seconds()
+    return (datetime.now(UTC) - _last_tick_at).total_seconds()

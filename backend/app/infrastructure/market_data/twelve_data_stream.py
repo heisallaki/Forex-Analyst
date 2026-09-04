@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import ssl
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import certifi
 import websockets
@@ -37,7 +37,7 @@ async def _persist_tick(payload: dict) -> None:
         tick = Tick(
             symbol=symbol,
             price=float(price),
-            timestamp=datetime.fromtimestamp(int(raw_timestamp), tz=timezone.utc),
+            timestamp=datetime.fromtimestamp(int(raw_timestamp), tz=UTC),
         )
         async with AsyncSessionLocal() as session:
             repository = SqlAlchemyMarketRepository(session)
