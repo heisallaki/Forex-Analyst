@@ -36,28 +36,67 @@ from app.infrastructure.database.models import (  # noqa: F401
 from app.main import app
 
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
-test_engine = create_async_engine(TEST_DATABASE_URL)
-TestSessionLocal = async_sessionmaker(bind=test_engine, expire_on_commit=False)
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def setup_database():
-    async with test_engine.begin() as connection:
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def test_engine():
+    engine = create_async_engine(TEST_DATABASE_URL)
+
+    async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
-    yield
-    async with test_engine.begin() as connection:
+
+    yield engine
+
+    async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.drop_all)
-    await test_engine.dispose()
+
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def TestSessionLocal(test_engine):
+    return async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+    )
 
 
 @pytest_asyncio.fixture
-async def client():
+async def client(TestSessionLocal):
     async def override_get_db_session():
         async with TestSessionLocal() as session:
             yield session
 
     app.dependency_overrides[get_db_session] = override_get_db_session
+    app.state.limiter.enabled = False
+
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as async_client:
         yield async_client
+
+    app.state.limiter.enabled = True
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def rate_limited_client(TestSessionLocal):
+    async def override_get_db_session():
+        async with TestSessionLocal() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+    app.state.limiter.enabled = True
+
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as async_client:
+        yield async_client
+
     app.dependency_overrides.clear()

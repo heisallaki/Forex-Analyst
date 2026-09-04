@@ -50,5 +50,6 @@ async def refresh_access_token(
             role=user.role,
             permissions=user.permissions,
             is_active=user.is_active,
+            is_verified=user.is_verified,
         ),
     )
