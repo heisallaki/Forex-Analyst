@@ -1,3 +1,5 @@
+![FX Analyst preview](.github/preview.png)
+
 # FX Analyst
 
 An AI-powered forex and gold market analyst, live at **[forex-analyst.vercel.app](https://forex-analyst.vercel.app/)**.
