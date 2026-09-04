@@ -38,7 +38,7 @@ jobs:
       - run: |
           cd backend
           source venv/bin/activate
-          pytest --cov=app --cov-report=term-missing
+          PYTHONPATH=. pytest --cov=app --cov-report=term-missing
         env:
           TEST_DATABASE_URL: postgresql+asyncpg://forex_dev:changeme@localhost:5432/forex_analyst_test
 
