@@ -3,6 +3,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.domain.services.trading_math import compute_pnl, pip_size, size_quantity_for_risk
+
 
 @dataclass
 class Condition:
@@ -45,15 +47,6 @@ class SimulatedTrade:
     closed_at: datetime
     exit_reason: str
     entry_snapshot: dict
-
-
-def _pip_size(symbol: str) -> float:
-    upper_symbol = symbol.upper()
-    if "JPY" in upper_symbol:
-        return 0.01
-    if "XAU" in upper_symbol:
-        return 0.01
-    return 0.0001
 
 
 def _coerce_for_compare(value):
@@ -102,9 +95,9 @@ def evaluate_rule_group(row: dict, group: RuleGroup | None) -> bool:
 
 
 def run_backtest(feature_rows: list[dict], config: BacktestConfig) -> list[SimulatedTrade]:
-    pip_size = _pip_size(config.symbol)
-    spread = config.spread_pips * pip_size
-    slippage = config.slippage_pips * pip_size
+    pip_size_value = pip_size(config.symbol)
+    spread = config.spread_pips * pip_size_value
+    slippage = config.slippage_pips * pip_size_value
 
     equity = config.initial_balance
     trades: list[SimulatedTrade] = []
@@ -139,11 +132,12 @@ def run_backtest(feature_rows: list[dict], config: BacktestConfig) -> list[Simul
                 exit_reason = "time_stop"
 
             if exit_price is not None:
-                direction_multiplier = 1 if position["side"] == "long" else -1
-                pnl = (
-                    (exit_price - position["entry_price"])
-                    * direction_multiplier
-                    * position["quantity"]
+                pnl = compute_pnl(
+                    config.symbol,
+                    position["side"],
+                    position["entry_price"],
+                    exit_price,
+                    position["quantity"],
                 )
                 pnl -= config.commission_per_trade
                 equity += pnl
@@ -190,7 +184,7 @@ def run_backtest(feature_rows: list[dict], config: BacktestConfig) -> list[Simul
                 take_profit = entry_price - tp_distance
 
             risk_amount = equity * (config.risk_per_trade_pct / 100)
-            quantity = risk_amount / sl_distance if sl_distance > 0 else 0.0
+            quantity = size_quantity_for_risk(config.symbol, risk_amount, sl_distance, entry_price)
 
             if quantity <= 0:
                 continue

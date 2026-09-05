@@ -6,6 +6,7 @@ from app.application.use_cases.get_historical_candles import get_historical_cand
 from app.domain.entities.paper_trading import PaperTrade
 from app.domain.repositories.market_repository import MarketRepository
 from app.domain.repositories.paper_trading_repository import PaperTradingRepository
+from app.domain.services.trading_math import size_quantity_for_risk
 from app.infrastructure.market_data.price_cache import get_latest_price
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
 
@@ -44,7 +45,9 @@ async def open_paper_trade_use_case(
         stop_distance = abs(entry_price - payload.stop_loss)
         if stop_distance <= 0:
             raise ValueError("stop_loss must differ from the current market price")
-        quantity = payload.risk_amount / stop_distance
+        quantity = size_quantity_for_risk(
+            payload.symbol, payload.risk_amount, stop_distance, entry_price
+        )
 
     trade = PaperTrade(
         id=uuid4(),
