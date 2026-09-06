@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -67,20 +67,25 @@ export function PaperTradingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadPortfolioDetail = async (portfolioId: string) => {
-    const [performanceResult, tradesResult] = await Promise.all([
-      getPortfolioPerformance(portfolioId),
-      listTrades(portfolioId)
-    ]);
-    setPerformance(performanceResult);
-    setTrades(tradesResult);
-  };
+  const loadPortfolioDetail = useCallback(
+    async (portfolioId: string) => {
+        const [performanceResult, tradesResult] = await Promise.all([
+          getPortfolioPerformance(portfolioId),
+          listTrades(portfolioId),
+        ]);
+      setPerformance(performanceResult);
+      setTrades(tradesResult);
+    },
+    []
+  );
 
   useEffect(() => {
-    if (selectedPortfolioId) {
-      loadPortfolioDetail(selectedPortfolioId).catch((err) => showToast((err as Error).message, "error"));
-    }
-  }, [selectedPortfolioId]);
+      if (!selectedPortfolioId) return;
+
+      loadPortfolioDetail(selectedPortfolioId).catch((err) =>
+        showToast((err as Error).message, "error")
+      );
+  }, [selectedPortfolioId, loadPortfolioDetail, showToast]);
 
   const handleCreatePortfolio = async () => {
     try {

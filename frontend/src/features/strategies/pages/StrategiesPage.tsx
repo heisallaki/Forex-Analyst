@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Box, List, ListItem, ListItemText, Chip, Button, Typography, Tooltip, IconButton } from "@mui/material";
 import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -24,16 +24,18 @@ export function StrategiesPage() {
   const { showToast } = useToast();
   const isAdmin = useAuthStore((state) => state.user?.role === "admin");
 
-  const load = () =>
-    listStrategies()
-      .then(setDbStrategies)
-      .catch((err) => showToast((err as Error).message, "error"));
-
+  const load = useCallback(
+    () =>
+      listStrategies()
+        .then(setDbStrategies)
+        .catch((err) => showToast((err as Error).message, "error")),
+    [showToast]
+  );
   useEffect(() => {
     load()
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, []);
+  }, [load]);
 
   const handleDeactivate = async (strategy: StrategyListItem) => {
     try {

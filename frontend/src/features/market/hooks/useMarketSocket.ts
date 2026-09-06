@@ -43,6 +43,7 @@ export function useMarketSocket() {
           }));
         }
       } catch {
+        // Ignore malformed WebSocket messages.
       }
     };
 
