@@ -1,4 +1,9 @@
 import os
+import uuid
+from datetime import UTC, datetime
+
+from app.domain.entities.user import User
+from app.infrastructure.repositories.user_repository_impl import SqlAlchemyUserRepository
 
 os.environ.setdefault(
     "DATABASE_URL",
@@ -27,6 +32,7 @@ from app.infrastructure.database.models import (  # noqa: F401
     refresh_token_model,
     signal_model,
     strategy_model,
+    system_settings_model,
     tick_model,
     trade_model,
     trained_model_model,
@@ -36,33 +42,47 @@ from app.infrastructure.database.models import (  # noqa: F401
 from app.main import app
 
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
+test_engine = create_async_engine(TEST_DATABASE_URL)
+TestSessionLocal = async_sessionmaker(bind=test_engine, expire_on_commit=False)
 
 
-@pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def test_engine():
-    engine = create_async_engine(TEST_DATABASE_URL)
-
-    async with engine.begin() as connection:
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def setup_database():
+    async with test_engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
-
-    yield engine
-
-    async with engine.begin() as connection:
+    yield
+    async with test_engine.begin() as connection:
         await connection.run_sync(Base.metadata.drop_all)
-
-    await engine.dispose()
-
-
-@pytest_asyncio.fixture(scope="session")
-async def TestSessionLocal(test_engine):
-    return async_sessionmaker(
-        bind=test_engine,
-        expire_on_commit=False,
-    )
+    await test_engine.dispose()
 
 
 @pytest_asyncio.fixture
-async def client(TestSessionLocal):
+async def db_session():
+    async with TestSessionLocal() as session:
+        yield session
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session):
+    user = User(
+        id=uuid.uuid4(),
+        email=f"test-{uuid.uuid4()}@example.com",
+        hashed_password="test-hashed-password",
+        full_name="Test User",
+        role="viewer",
+        permissions=User.default_permissions_for_role("viewer"),
+        is_active=True,
+        is_verified=True,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+
+    repository = SqlAlchemyUserRepository(db_session)
+    return await repository.create(user)
+
+
+@pytest_asyncio.fixture
+async def client():
     async def override_get_db_session():
         async with TestSessionLocal() as session:
             yield session
@@ -71,11 +91,7 @@ async def client(TestSessionLocal):
     app.state.limiter.enabled = False
 
     transport = ASGITransport(app=app)
-
-    async with AsyncClient(
-        transport=transport,
-        base_url="http://test",
-    ) as async_client:
+    async with AsyncClient(transport=transport, base_url="http://test") as async_client:
         yield async_client
 
     app.state.limiter.enabled = True
@@ -83,7 +99,7 @@ async def client(TestSessionLocal):
 
 
 @pytest_asyncio.fixture
-async def rate_limited_client(TestSessionLocal):
+async def rate_limited_client():
     async def override_get_db_session():
         async with TestSessionLocal() as session:
             yield session
@@ -92,11 +108,7 @@ async def rate_limited_client(TestSessionLocal):
     app.state.limiter.enabled = True
 
     transport = ASGITransport(app=app)
-
-    async with AsyncClient(
-        transport=transport,
-        base_url="http://test",
-    ) as async_client:
+    async with AsyncClient(transport=transport, base_url="http://test") as async_client:
         yield async_client
 
     app.dependency_overrides.clear()
