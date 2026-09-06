@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/features/auth/store/authStore";
 
-export type MarketSocketStatus = "connecting" | "open" | "closed";
+export type MarketSocketStatus = "connecting" | "open" | "closed" | "misconfigured";
 
 export type MarketTick = {
   symbol: string;

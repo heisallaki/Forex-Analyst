@@ -13,8 +13,8 @@ const REFRESH_INTERVAL_MS = 30000;
 
 export function ChartsPage() {
   const [instruments, setInstruments] = useState<string[]>([]);
-  const [symbol, setSymbol] = useState(() => getPreference("charts_symbol", ""));
-  const [interval, setInterval] = useState(() => getPreference("charts_interval", "1min"));
+  const [symbol, setSymbol] = useState<string>(() => getPreference("charts_symbol", ""));
+  const [interval, setInterval] = useState<string>(() => getPreference("charts_interval", "1min"));
   const [data, setData] = useState<CandlePoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -1,8 +1,10 @@
 export type PasswordStrengthLabel = "weak" | "medium" | "strong";
+export type PasswordStrengthColor = "error" | "warning" | "success";
 
 export interface PasswordStrengthResult {
   score: number;
   label: PasswordStrengthLabel;
+  color: PasswordStrengthColor;
 }
 
 export function evaluatePasswordStrength(password: string): PasswordStrengthResult {
@@ -22,13 +24,17 @@ export function evaluatePasswordStrength(password: string): PasswordStrengthResu
   score += checks.filter((pattern) => pattern.test(normalizedPassword)).length * 15;
 
   let label: PasswordStrengthLabel = "weak";
-  if (score >= 70) {
-    label = "strong";
-  } else if (score >= 40) {
-    label = "medium";
-  }
+let color: PasswordStrengthColor = "error";
 
-  return { score: Math.min(score, 100), label };
+if (score >= 70) {
+  label = "strong";
+  color = "success";
+} else if (score >= 40) {
+  label = "medium";
+  color = "warning";
+}
+
+return { score: Math.min(score, 100), label, color };
 }
 
 import { describe, it, expect } from "vitest";

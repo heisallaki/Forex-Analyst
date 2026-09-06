@@ -4,7 +4,7 @@ export interface MarketStatus {
 }
 
 export interface PriceTick {
-  event: string;
+  event?: string;
   symbol: string;
   price: string;
   timestamp: number;

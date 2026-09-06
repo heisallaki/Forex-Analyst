@@ -36,8 +36,8 @@ const INTERVALS = ["1min", "5min", "15min", "30min", "45min", "1h", "1day"];
 
 export function AIAnalysisPage() {
   const [instruments, setInstruments] = useState<string[]>([]);
-  const [symbol, setSymbol] = useState(() => getPreference("ai_symbol", "EUR/USD"));
-  const [interval, setInterval] = useState(() => getPreference("ai_interval", "1min"));
+  const [symbol, setSymbol] = useState<string>(() => getPreference("ai_symbol", "EUR/USD"));
+  const [interval, setInterval] = useState<string>(() => getPreference("ai_interval", "1min"));
   const [modelStatus, setModelStatus] = useState<ModelStatusResponse | null>(null);
   const [predictions, setPredictions] = useState<PredictMarketResponse | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
