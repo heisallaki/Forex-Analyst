@@ -22,26 +22,8 @@ async def submit_execution_order_use_case(
         confirmation_phrase=payload.confirmation_phrase,
     )
 
-    open_positions_count = 0
-    daily_loss_pct = 0.0
-    portfolio_note = (
-    "No portfolio specified; risk checks used conservative defaults "
-    "(0 open positions, 0% daily loss)."
-)
-
-    if payload.portfolio_id is not None:
-        portfolio = await paper_trading_repository.get_portfolio(
-            UUID(payload.portfolio_id), user_id
-        )
-        if portfolio is not None:
-            open_positions_count = await paper_trading_repository.get_open_trade_count(portfolio.id)
-            daily_loss_pct = await paper_trading_repository.get_daily_pnl_pct(portfolio.id)
-            portfolio_note = f"Risk checks used real data from portfolio {portfolio.name}."
-        else:
-            portfolio_note = (
-    "Specified portfolio was not found or not owned by this user; "
-    "used conservative defaults."
-)
+    open_positions_count = await paper_trading_repository.get_account_open_trade_count(user_id)
+    daily_loss_pct = await paper_trading_repository.get_account_daily_pnl_pct(user_id)
 
     gateway = ExecutionGateway()
     result = await gateway.submit_order(
@@ -61,7 +43,8 @@ async def submit_execution_order_use_case(
             "result_reason": result.reason,
             "open_positions_count": open_positions_count,
             "daily_loss_pct": daily_loss_pct,
-            "portfolio_note": portfolio_note,
+            "portfolio_id_hint": payload.portfolio_id,
+            "note": "Risk checks aggregated across all portfolios owned by this user.",
         },
     )
 

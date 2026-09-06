@@ -67,3 +67,11 @@ class PaperTradingRepository(ABC):
     @abstractmethod
     async def get_daily_pnl_pct(self, portfolio_id: UUID) -> float:
         raise NotImplementedError
+
+    @abstractmethod
+    async def get_account_open_trade_count(self, user_id: UUID) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_account_daily_pnl_pct(self, user_id: UUID) -> float:
+        raise NotImplementedError

@@ -24,6 +24,7 @@ from app.core.logging import configure_logging
 from app.core.rate_limit import limiter
 from app.infrastructure.market_data.position_monitor import run_position_monitor
 from app.infrastructure.market_data.twelve_data_stream import run_market_stream
+from app.infrastructure.scheduler.signal_accuracy_scheduler import run_signal_accuracy_evaluator
 
 configure_logging(settings.APP_DEBUG)
 logger = logging.getLogger(__name__)
@@ -33,12 +34,15 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     stream_task = asyncio.create_task(run_market_stream())
     monitor_task = asyncio.create_task(run_position_monitor())
+    evaluator_task = asyncio.create_task(run_signal_accuracy_evaluator())
     app.state.stream_task = stream_task
     app.state.monitor_task = monitor_task
+    app.state.evaluator_task = evaluator_task
     yield
     stream_task.cancel()
     monitor_task.cancel()
-    for task in (stream_task, monitor_task):
+    evaluator_task.cancel()
+    for task in (stream_task, monitor_task, evaluator_task):
         try:
             await task
         except asyncio.CancelledError:

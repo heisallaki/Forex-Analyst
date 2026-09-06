@@ -50,6 +50,14 @@ class BacktestRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def deactivate_strategy(self, strategy_id: UUID) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete_strategy(self, strategy_id: UUID) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
     async def list_signals_for_evaluation(self, limit: int) -> list[Signal]:
         raise NotImplementedError
 

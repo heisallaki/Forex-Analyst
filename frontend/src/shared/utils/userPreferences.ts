@@ -1,22 +1,33 @@
 import { useAuthStore } from "@/features/auth/store/authStore";
 
-function keyFor(key: string): string {
-  const userId = useAuthStore.getState().user?.id ?? "anonymous";
-  return `pref:${userId}:${key}`;
-}
+const STORAGE_KEY = "fx-analyst-user-preferences";
 
-export function getPreference<T>(key: string, fallback: T): T {
-  const raw = localStorage.getItem(keyFor(key));
-  if (raw === null) {
-    return fallback;
-  }
+const getUserId = () => useAuthStore.getState().user?.id ?? "guest";
+
+const getAllPreferences = (): Record<string, Record<string, string>> => {
   try {
-    return JSON.parse(raw) as T;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, Record<string, string>>) : {};
   } catch {
-    return fallback;
+    return {};
   }
-}
+};
 
-export function setPreference<T>(key: string, value: T): void {
-  localStorage.setItem(keyFor(key), JSON.stringify(value));
-}
+export const getPreference = <T extends string>(key: string, fallback: T): T => {
+  const prefs = getAllPreferences()[getUserId()] ?? {};
+  const value = prefs[key];
+  return (value ?? fallback) as T;
+};
+
+export const setPreference = <T extends string>(key: string, value: T): void => {
+  const allPrefs = getAllPreferences();
+  const userPrefs = allPrefs[getUserId()] ?? {};
+  userPrefs[key] = value;
+  allPrefs[getUserId()] = userPrefs;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allPrefs));
+  } catch {
+    // noop
+  }
+};

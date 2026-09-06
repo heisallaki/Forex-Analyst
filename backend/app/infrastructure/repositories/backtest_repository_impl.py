@@ -183,6 +183,28 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
             model.is_active = True
             await self.session.commit()
 
+    async def deactivate_strategy(self, strategy_id: UUID) -> bool:
+        result = await self.session.execute(
+            select(StrategyModel).where(StrategyModel.id == strategy_id)
+        )
+        model = result.scalar_one_or_none()
+        if model is None:
+            return False
+        model.is_active = False
+        await self.session.commit()
+        return True
+
+    async def delete_strategy(self, strategy_id: UUID) -> bool:
+        result = await self.session.execute(
+            select(StrategyModel).where(StrategyModel.id == strategy_id)
+        )
+        model = result.scalar_one_or_none()
+        if model is None:
+            return False
+        await self.session.delete(model)
+        await self.session.commit()
+        return True
+
     async def list_signals_for_evaluation(self, limit: int) -> list[Signal]:
         query = (
             select(SignalModel)
@@ -216,10 +238,16 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         flats = sum(1 for signal in evaluated if signal.outcome == "flat")
         total = len(evaluated)
 
-        long_signals = [signal for signal in evaluated if signal.direction == "long"]
-        short_signals = [signal for signal in evaluated if signal.direction == "short"]
-        long_decided = [signal for signal in long_signals if signal.outcome in ("win", "loss")]
-        short_decided = [signal for signal in short_signals if signal.outcome in ("win", "loss")]
+        long_decided = [
+            signal
+            for signal in evaluated
+            if signal.direction == "long" and signal.outcome in ("win", "loss")
+        ]
+        short_decided = [
+            signal
+            for signal in evaluated
+            if signal.direction == "short" and signal.outcome in ("win", "loss")
+        ]
         decided = wins + losses
 
         return {

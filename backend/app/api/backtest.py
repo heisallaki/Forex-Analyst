@@ -1,13 +1,18 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, require_permission, require_verified
+from app.api.deps import get_db_session, require_admin, require_permission, require_verified
 from app.application.dto.backtest_dto import (
     BacktestRunRequest,
     BacktestRunResponse,
     StrategyListItem,
+)
+from app.application.use_cases.manage_strategies import (
+    deactivate_strategy_use_case,
+    delete_strategy_use_case,
 )
 from app.application.use_cases.run_backtest import run_backtest_use_case
 from app.domain.entities.user import User
@@ -50,3 +55,23 @@ async def strategies(
         )
         for item in strategy_list
     ]
+
+
+@router.patch("/strategies/{strategy_id}/deactivate", status_code=204)
+async def deactivate_strategy(
+    strategy_id: UUID,
+    current_user: Annotated[User, Depends(require_admin())],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> None:
+    backtest_repository = SqlAlchemyBacktestRepository(session)
+    await deactivate_strategy_use_case(strategy_id, backtest_repository)
+
+
+@router.delete("/strategies/{strategy_id}", status_code=204)
+async def delete_strategy(
+    strategy_id: UUID,
+    current_user: Annotated[User, Depends(require_admin())],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> None:
+    backtest_repository = SqlAlchemyBacktestRepository(session)
+    await delete_strategy_use_case(strategy_id, backtest_repository)

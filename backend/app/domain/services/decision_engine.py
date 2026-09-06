@@ -76,12 +76,12 @@ def build_reasoning(
         else "an undetermined reward-to-risk ratio"
     )
     return (
-            f"The trend model identifies a {direction_word} bias with "
-            f"{combined_confidence:.0%} combined confidence across the trend, "
-            f"entry quality, and confidence scoring models, offering {rr_text} "
-            f"in the current {predicted_regime} regime. This meets the "
-            "minimum confidence and reward-to-risk thresholds required to "
-            "surface as a recommendation."
+        f"The trend model identifies a {direction_word} bias with "
+        f"{combined_confidence:.0%} combined confidence across the trend, "
+        f"entry quality, and confidence scoring models, offering {rr_text} "
+        f"in the current {predicted_regime} regime. This meets the "
+        "minimum confidence and reward-to-risk thresholds required to "
+        "surface as a recommendation."
     )
 
 

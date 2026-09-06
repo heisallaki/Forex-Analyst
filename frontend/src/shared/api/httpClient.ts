@@ -56,6 +56,9 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     throw new Error(body.detail || `Request failed with status ${response.status}`);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return response.json() as Promise<T>;
 }
 
@@ -63,7 +66,11 @@ export async function httpGet<T>(path: string): Promise<T> {
   return request<T>(path, { method: "GET" });
 }
 
-export async function httpPost<T>(path: string, body: unknown, method: "POST" | "PATCH" = "POST"): Promise<T> {
+export async function httpPost<T>(
+  path: string,
+  body: unknown,
+  method: "POST" | "PATCH" | "DELETE" = "POST"
+): Promise<T> {
   return request<T>(path, {
     method,
     headers: { "Content-Type": "application/json" },
