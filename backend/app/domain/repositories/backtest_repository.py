@@ -48,3 +48,15 @@ class BacktestRepository(ABC):
     @abstractmethod
     async def activate_strategy(self, strategy_id: UUID) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    async def list_signals_for_evaluation(self, limit: int) -> list[Signal]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def record_signal_outcome(self, signal_id: UUID, outcome: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_accuracy_stats(self) -> dict:
+        raise NotImplementedError

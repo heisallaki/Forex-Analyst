@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from app.api.admin import router as admin_router
 from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.backtest import router as backtest_router
@@ -17,6 +18,7 @@ from app.api.features import router as features_router
 from app.api.health import router as health_router
 from app.api.market import router as market_router
 from app.api.paper_trading import router as paper_trading_router
+from app.api.users import router as users_router
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.rate_limit import limiter
@@ -82,3 +84,5 @@ app.include_router(ai_router, prefix=settings.API_PREFIX)
 app.include_router(decision_router, prefix=settings.API_PREFIX)
 app.include_router(paper_trading_router, prefix=settings.API_PREFIX)
 app.include_router(execution_router, prefix=settings.API_PREFIX)
+app.include_router(users_router, prefix=settings.API_PREFIX)
+app.include_router(admin_router, prefix=settings.API_PREFIX)

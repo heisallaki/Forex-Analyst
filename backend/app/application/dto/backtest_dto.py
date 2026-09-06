@@ -89,6 +89,7 @@ class BacktestIntervalResult(BaseModel):
 class BacktestRunResponse(BaseModel):
     strategy_id: str
     strategy_name: str
+    strategy_version: int
     symbol: str
     results: list[BacktestIntervalResult]
 
@@ -102,6 +103,8 @@ class SignalListItem(BaseModel):
     reasoning: dict
     created_at: datetime
     hidden_at: datetime | None
+    outcome: str | None
+    evaluated_at: datetime | None
     is_owner: bool
 
 
@@ -118,4 +121,20 @@ class StrategyListItem(BaseModel):
     id: str
     name: str
     description: str | None
+    version: int
     is_active: bool
+
+
+class EvaluateSignalsResponse(BaseModel):
+    evaluated: int
+    skipped: int
+
+
+class AccuracyStatsResponse(BaseModel):
+    total_evaluated: int
+    wins: int
+    losses: int
+    flats: int
+    win_rate: float | None
+    long_win_rate: float | None
+    short_win_rate: float | None

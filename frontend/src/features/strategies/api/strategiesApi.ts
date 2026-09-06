@@ -4,6 +4,7 @@ export interface StrategyListItem {
   id: string;
   name: string;
   description: string | null;
+  version: number;
   is_active: boolean;
 }
 

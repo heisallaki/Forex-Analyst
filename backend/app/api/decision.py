@@ -4,13 +4,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, require_permission
+from app.api.deps import get_db_session, require_admin, require_permission
 from app.application.dto.backtest_dto import (
+    AccuracyStatsResponse,
+    EvaluateSignalsResponse,
     SignalBulkActionRequest,
     SignalBulkActionResponse,
     SignalListItem,
 )
 from app.application.dto.decision_dto import RecommendationResponse
+from app.application.use_cases.evaluate_signals import (
+    evaluate_pending_signals_use_case,
+    get_accuracy_stats_use_case,
+)
 from app.application.use_cases.generate_recommendation import generate_recommendation_use_case
 from app.domain.entities.user import User
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
@@ -19,6 +25,9 @@ from app.infrastructure.repositories.ai_prediction_repository_impl import (
 )
 from app.infrastructure.repositories.backtest_repository_impl import SqlAlchemyBacktestRepository
 from app.infrastructure.repositories.market_repository_impl import SqlAlchemyMarketRepository
+from app.infrastructure.repositories.system_settings_repository_impl import (
+    SqlAlchemySystemSettingsRepository,
+)
 
 router = APIRouter(prefix="/decision", tags=["decision"])
 
@@ -33,6 +42,7 @@ async def recommend(
     market_repository = SqlAlchemyMarketRepository(session)
     prediction_repository = SqlAlchemyAIPredictionRepository(session)
     backtest_repository = SqlAlchemyBacktestRepository(session)
+    settings_repository = SqlAlchemySystemSettingsRepository(session)
     client = TwelveDataClient()
     try:
         return await generate_recommendation_use_case(
@@ -41,6 +51,7 @@ async def recommend(
             market_repository,
             prediction_repository,
             backtest_repository,
+            settings_repository,
             client,
             current_user.id,
         )
@@ -68,6 +79,8 @@ async def signals(
             reasoning=signal.reasoning,
             created_at=signal.created_at,
             hidden_at=signal.hidden_at,
+            outcome=signal.outcome,
+            evaluated_at=signal.evaluated_at,
             is_owner=signal.user_id is not None and signal.user_id == current_user.id,
         )
         for signal in signal_list
@@ -120,3 +133,23 @@ async def delete_signals(
     return SignalBulkActionResponse(
         succeeded=[str(i) for i in succeeded], skipped=[str(i) for i in skipped]
     )
+
+
+@router.post("/signals/evaluate", response_model=EvaluateSignalsResponse)
+async def evaluate_signals(
+    current_user: Annotated[User, Depends(require_admin())],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> EvaluateSignalsResponse:
+    backtest_repository = SqlAlchemyBacktestRepository(session)
+    market_repository = SqlAlchemyMarketRepository(session)
+    client = TwelveDataClient()
+    return await evaluate_pending_signals_use_case(backtest_repository, market_repository, client)
+
+
+@router.get("/accuracy", response_model=AccuracyStatsResponse)
+async def accuracy(
+    current_user: Annotated[User, Depends(require_permission("view_markets"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AccuracyStatsResponse:
+    backtest_repository = SqlAlchemyBacktestRepository(session)
+    return await get_accuracy_stats_use_case(backtest_repository)

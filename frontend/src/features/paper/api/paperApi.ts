@@ -6,6 +6,7 @@ export interface Portfolio {
   base_currency: string;
   initial_balance: number;
   current_balance: number;
+  leverage: number;
   created_at: string;
 }
 
@@ -20,6 +21,9 @@ export interface Trade {
   quantity: number;
   stop_loss: number | null;
   take_profit: number | null;
+  trailing_stop_distance: number | null;
+  margin_used: number | null;
+  realized_pnl: number;
   status: string;
   pnl: number | null;
   opened_at: string;
@@ -37,14 +41,15 @@ export interface PortfolioPerformance {
   gross_profit: number;
   gross_loss: number;
   total_pnl: number;
+  available_margin: number;
 }
 
 export async function listPortfolios(): Promise<Portfolio[]> {
   return httpGet<Portfolio[]>("/paper/portfolios");
 }
 
-export async function createPortfolio(name: string, initialBalance: number): Promise<Portfolio> {
-  return httpPost<Portfolio>("/paper/portfolios", { name, initial_balance: initialBalance });
+export async function createPortfolio(name: string, initialBalance: number, leverage: number): Promise<Portfolio> {
+  return httpPost<Portfolio>("/paper/portfolios", { name, initial_balance: initialBalance, leverage });
 }
 
 export async function getPortfolioPerformance(portfolioId: string): Promise<PortfolioPerformance> {
@@ -67,6 +72,7 @@ export interface OpenTradePayload {
   risk_amount?: number;
   stop_loss?: number;
   take_profit?: number;
+  trailing_stop_distance?: number;
 }
 
 export async function openTrade(payload: OpenTradePayload): Promise<Trade> {
@@ -75,4 +81,8 @@ export async function openTrade(payload: OpenTradePayload): Promise<Trade> {
 
 export async function closeTrade(tradeId: string): Promise<Trade> {
   return httpPost<Trade>(`/paper/trades/${tradeId}/close`, {});
+}
+
+export async function partialCloseTrade(tradeId: string, quantity: number): Promise<Trade> {
+  return httpPost<Trade>(`/paper/trades/${tradeId}/partial-close`, { quantity });
 }

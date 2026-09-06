@@ -11,6 +11,7 @@ class Portfolio:
     base_currency: str
     initial_balance: float
     current_balance: float
+    leverage: float
     created_at: datetime
     updated_at: datetime
 
@@ -27,6 +28,9 @@ class PaperTrade:
     quantity: float
     stop_loss: float | None
     take_profit: float | None
+    trailing_stop_distance: float | None
+    margin_used: float | None
+    realized_pnl: float
     status: str
     pnl: float | None
     opened_at: datetime

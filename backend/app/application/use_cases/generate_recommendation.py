@@ -7,12 +7,14 @@ from app.domain.entities.backtest import Signal
 from app.domain.repositories.ai_prediction_repository import AIPredictionRepository
 from app.domain.repositories.backtest_repository import BacktestRepository
 from app.domain.repositories.market_repository import MarketRepository
+from app.domain.repositories.system_settings_repository import SystemSettingsRepository
 from app.domain.services.decision_engine import build_recommendation
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
 
 DISCLAIMER = (
     "This is an automated analysis and recommendation, not financial advice "
-    "and not an executed trade. No position will be opened automatically."
+    "and not an executed trade. "
+    "No position will be opened automatically."
 )
 
 
@@ -22,6 +24,7 @@ async def generate_recommendation_use_case(
     market_repository: MarketRepository,
     prediction_repository: AIPredictionRepository,
     backtest_repository: BacktestRepository,
+    settings_repository: SystemSettingsRepository,
     client: TwelveDataClient,
     user_id: UUID,
 ) -> RecommendationResponse:
@@ -32,7 +35,15 @@ async def generate_recommendation_use_case(
         prediction.model_name: prediction.output for prediction in prediction_response.predictions
     }
 
-    recommendation = build_recommendation(symbol, interval, latest_row, predictions_by_type)
+    thresholds = await settings_repository.get_settings()
+    recommendation = build_recommendation(
+        symbol,
+        interval,
+        latest_row,
+        predictions_by_type,
+        min_confidence_threshold=thresholds.min_confidence_threshold,
+        min_reward_risk_ratio=thresholds.min_reward_risk_ratio,
+    )
 
     signal = Signal(
         id=uuid4(),
@@ -52,6 +63,7 @@ async def generate_recommendation_use_case(
             "alternative_scenarios": recommendation["alternative_scenarios"],
             "invalidation_conditions": recommendation["invalidation_conditions"],
             "source": "decision_engine",
+            "interval": interval,
         },
         created_at=datetime.now(UTC),
         user_id=user_id,

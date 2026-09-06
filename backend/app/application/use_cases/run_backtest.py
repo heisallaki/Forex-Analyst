@@ -103,6 +103,7 @@ async def run_backtest_use_case(
                     "entry_snapshot": simulated.entry_snapshot,
                     "stop_loss_atr_multiple": payload.stop_loss_atr_multiple,
                     "take_profit_atr_multiple": payload.take_profit_atr_multiple,
+                    "source": "backtest",
                 },
                 created_at=simulated.opened_at,
                 user_id=user_id,
@@ -178,6 +179,7 @@ async def run_backtest_use_case(
     return BacktestRunResponse(
         strategy_id=str(strategy_entity.id),
         strategy_name=strategy_entity.name,
+        strategy_version=strategy_entity.version,
         symbol=payload.symbol,
         results=interval_results,
     )

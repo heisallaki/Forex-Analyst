@@ -9,6 +9,7 @@ class Strategy:
     name: str
     description: str | None
     parameters: dict
+    version: int
     is_active: bool
 
 
@@ -23,6 +24,8 @@ class Signal:
     created_at: datetime
     user_id: UUID | None = None
     hidden_at: datetime | None = None
+    outcome: str | None = None
+    evaluated_at: datetime | None = None
 
 
 @dataclass

@@ -15,6 +15,9 @@ from app.domain.entities.user import User
 from app.infrastructure.repositories.execution_repository_impl import (
     SqlAlchemyExecutionAuditRepository,
 )
+from app.infrastructure.repositories.paper_trading_repository_impl import (
+    SqlAlchemyPaperTradingRepository,
+)
 
 router = APIRouter(prefix="/execution", tags=["execution"])
 
@@ -39,4 +42,7 @@ async def submit_order(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ExecutionResultResponse:
     audit_repository = SqlAlchemyExecutionAuditRepository(session)
-    return await submit_execution_order_use_case(payload, audit_repository)
+    paper_trading_repository = SqlAlchemyPaperTradingRepository(session)
+    return await submit_execution_order_use_case(
+        payload, audit_repository, paper_trading_repository, current_user.id
+    )

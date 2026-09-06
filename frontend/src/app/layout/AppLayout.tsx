@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -27,7 +27,6 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { logout as logoutRequest } from "@/features/auth/api/authApi";
 import { useThemeStore } from "@/app/theme/themeStore";
-import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 
 const DRAWER_WIDTH = 240;
 
@@ -41,6 +40,7 @@ const NAV_ITEMS = [
   { label: "Backtesting", path: "/backtest" },
   { label: "Paper Trading", path: "/paper" },
   { label: "Analytics", path: "/analytics" },
+  { label: "Users", path: "/users", adminOnly: true },
   { label: "Settings", path: "/settings" }
 ];
 
@@ -80,9 +80,11 @@ export function AppLayout() {
         .toUpperCase()
     : "?";
 
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === "admin");
+
   const navList = (
     <List sx={{ px: 1 }}>
-      {NAV_ITEMS.map((item) => (
+      {visibleNavItems.map((item) => (
         <ListItemButton
           key={item.path}
           selected={location.pathname === item.path}
@@ -195,9 +197,7 @@ export function AppLayout() {
           </Toolbar>
         </AppBar>
         <Box sx={{ maxWidth: "100vw", overflowX: "hidden" }}>
-          <Suspense fallback={<PageLoadingSkeleton />}>
-            <Outlet />
-          </Suspense>
+          <Outlet />
         </Box>
       </Box>
     </Box>

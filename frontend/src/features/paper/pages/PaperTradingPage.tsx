@@ -27,7 +27,8 @@ import {
   getPortfolioPerformance,
   listPortfolios,
   listTrades,
-  openTrade
+  openTrade,
+  partialCloseTrade
 } from "@/features/paper/api/paperApi";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
@@ -40,11 +41,14 @@ export function PaperTradingPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [newPortfolioName, setNewPortfolioName] = useState("Main Portfolio");
   const [newPortfolioBalance, setNewPortfolioBalance] = useState(10000);
+  const [newPortfolioLeverage, setNewPortfolioLeverage] = useState(1);
   const [tradeSymbol, setTradeSymbol] = useState("EUR/USD");
   const [tradeSide, setTradeSide] = useState<"long" | "short">("long");
   const [riskAmount, setRiskAmount] = useState(100);
   const [stopLoss, setStopLoss] = useState<number | "">("");
   const [takeProfit, setTakeProfit] = useState<number | "">("");
+  const [trailingStopDistance, setTrailingStopDistance] = useState<number | "">("");
+  const [partialCloseQuantities, setPartialCloseQuantities] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
@@ -76,12 +80,11 @@ export function PaperTradingPage() {
     if (selectedPortfolioId) {
       loadPortfolioDetail(selectedPortfolioId).catch((err) => showToast((err as Error).message, "error"));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPortfolioId]);
 
   const handleCreatePortfolio = async () => {
     try {
-      const created = await createPortfolio(newPortfolioName, newPortfolioBalance);
+      const created = await createPortfolio(newPortfolioName, newPortfolioBalance, newPortfolioLeverage);
       await loadPortfolios();
       setSelectedPortfolioId(created.id);
       showToast("Portfolio created", "success");
@@ -102,7 +105,8 @@ export function PaperTradingPage() {
         side: tradeSide,
         risk_amount: riskAmount,
         stop_loss: Number(stopLoss),
-        take_profit: takeProfit === "" ? undefined : Number(takeProfit)
+        take_profit: takeProfit === "" ? undefined : Number(takeProfit),
+        trailing_stop_distance: trailingStopDistance === "" ? undefined : Number(trailingStopDistance)
       });
       await loadPortfolioDetail(selectedPortfolioId);
       showToast("Trade opened", "success");
@@ -116,6 +120,22 @@ export function PaperTradingPage() {
       await closeTrade(tradeId);
       await loadPortfolioDetail(selectedPortfolioId);
       showToast("Trade closed", "success");
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    }
+  };
+
+  const handlePartialClose = async (tradeId: string) => {
+    const raw = partialCloseQuantities[tradeId];
+    const quantity = Number(raw);
+    if (!raw || quantity <= 0) {
+      showToast("Enter a valid partial close quantity", "warning");
+      return;
+    }
+    try {
+      await partialCloseTrade(tradeId, quantity);
+      await loadPortfolioDetail(selectedPortfolioId);
+      showToast("Partial close executed", "success");
     } catch (err) {
       showToast((err as Error).message, "error");
     }
@@ -143,18 +163,18 @@ export function PaperTradingPage() {
                 >
                   {portfolios.map((portfolio) => (
                     <MenuItem key={portfolio.id} value={portfolio.id}>
-                      {portfolio.name} (${portfolio.current_balance.toFixed(2)})
+                      {portfolio.name} (${portfolio.current_balance.toFixed(2)}, {portfolio.leverage}x)
                     </MenuItem>
                   ))}
                 </TextField>
-                <Tooltip title="A portfolio is a virtual account with its own starting balance. Every trade you open must belong to a portfolio, so create one first if the list is empty — nothing else on this page will work until it exists.">
+                <Tooltip title="A portfolio is a virtual account with its own starting balance and leverage. Every trade you open must belong to a portfolio, so create one first if the list is empty.">
                   <IconButton size="small" aria-label="What is a portfolio?">
                     <InfoOutlinedIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               </Box>
             </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField
                 fullWidth
                 label="New portfolio name"
@@ -171,7 +191,17 @@ export function PaperTradingPage() {
                 onChange={(e) => setNewPortfolioBalance(Number(e.target.value))}
               />
             </Grid>
-            <Grid size={{ xs: 6, sm: 2 }}>
+            <Grid size={{ xs: 6, sm: 1.5 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Leverage"
+                value={newPortfolioLeverage}
+                onChange={(e) => setNewPortfolioLeverage(Number(e.target.value))}
+                inputProps={{ min: 1, max: 100 }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 1.5 }}>
               <Button variant="outlined" fullWidth onClick={handleCreatePortfolio}>
                 Create
               </Button>
@@ -205,9 +235,9 @@ export function PaperTradingPage() {
               </Grid>
               <Grid size={{ xs: 6, sm: 3 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Return
+                  Available margin
                 </Typography>
-                <Typography variant="h6">{performance.return_pct.toFixed(2)}%</Typography>
+                <Typography variant="h6">${performance.available_margin.toFixed(2)}</Typography>
               </Grid>
               <Grid size={{ xs: 6, sm: 3 }}>
                 <Typography variant="body2" color="text.secondary">
@@ -277,7 +307,18 @@ export function PaperTradingPage() {
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 2 }}>
-              <Button variant="contained" fullWidth onClick={handleOpenTrade}>
+              <Tooltip title="If set, the stop loss ratchets favorably as price moves in your favor by this distance, and never moves backward.">
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Trailing stop (optional)"
+                  value={trailingStopDistance}
+                  onChange={(e) => setTrailingStopDistance(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </Tooltip>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Button variant="contained" onClick={handleOpenTrade}>
                 Open trade
               </Button>
             </Grid>
@@ -298,6 +339,7 @@ export function PaperTradingPage() {
                   <TableCell>Side</TableCell>
                   <TableCell>Entry</TableCell>
                   <TableCell>Exit</TableCell>
+                  <TableCell>Qty</TableCell>
                   <TableCell>PnL</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell />
@@ -310,15 +352,37 @@ export function PaperTradingPage() {
                     <TableCell>{trade.side}</TableCell>
                     <TableCell>{trade.entry_price.toFixed(5)}</TableCell>
                     <TableCell>{trade.exit_price !== null ? trade.exit_price.toFixed(5) : "—"}</TableCell>
-                    <TableCell>{trade.pnl !== null ? trade.pnl.toFixed(2) : "—"}</TableCell>
+                    <TableCell>{trade.quantity.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {trade.pnl !== null
+                        ? trade.pnl.toFixed(2)
+                        : trade.realized_pnl !== 0
+                          ? `${trade.realized_pnl.toFixed(2)} realized`
+                          : "—"}
+                    </TableCell>
                     <TableCell>
                       <Chip size="small" label={trade.status} color={trade.status === "open" ? "warning" : "default"} />
                     </TableCell>
                     <TableCell>
                       {trade.status === "open" && (
-                        <Button size="small" onClick={() => handleCloseTrade(trade.id)}>
-                          Close
-                        </Button>
+                        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                          <TextField
+                            size="small"
+                            type="number"
+                            placeholder="qty"
+                            sx={{ width: 90 }}
+                            value={partialCloseQuantities[trade.id] ?? ""}
+                            onChange={(e) =>
+                              setPartialCloseQuantities((prev) => ({ ...prev, [trade.id]: e.target.value }))
+                            }
+                          />
+                          <Button size="small" onClick={() => handlePartialClose(trade.id)}>
+                            Partial
+                          </Button>
+                          <Button size="small" onClick={() => handleCloseTrade(trade.id)}>
+                            Close
+                          </Button>
+                        </Box>
                       )}
                     </TableCell>
                   </TableRow>

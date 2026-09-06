@@ -23,6 +23,7 @@ async def _handle_tick(payload: dict) -> None:
             repository = SqlAlchemyPaperTradingRepository(session)
             open_trades = await repository.get_open_trades_for_symbol(symbol)
             for trade in open_trades:
+                await repository.apply_trailing_stop(trade, price_value)
                 await repository.evaluate_and_close_if_triggered(trade, price_value)
     except Exception as error:
         logger.warning("Position monitor failed to process tick: %s", error)

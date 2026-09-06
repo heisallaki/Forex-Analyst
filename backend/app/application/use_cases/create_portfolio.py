@@ -16,6 +16,7 @@ async def create_portfolio_use_case(
         base_currency=payload.base_currency,
         initial_balance=payload.initial_balance,
         current_balance=payload.initial_balance,
+        leverage=payload.leverage,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -26,5 +27,6 @@ async def create_portfolio_use_case(
         base_currency=created.base_currency,
         initial_balance=created.initial_balance,
         current_balance=created.current_balance,
+        leverage=created.leverage,
         created_at=created.created_at,
     )

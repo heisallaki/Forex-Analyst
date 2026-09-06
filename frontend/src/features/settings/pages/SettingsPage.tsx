@@ -13,10 +13,10 @@ import {
   Typography,
   Tooltip,
   TextField,
-  Grid2,
   Button,
   CircularProgress
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import SettingsBrightnessIcon from "@mui/icons-material/SettingsBrightness";
@@ -24,12 +24,15 @@ import CheckIcon from "@mui/icons-material/Check";
 import { useNavigate } from "react-router-dom";
 import {
   ExecutionStatus,
+  SystemSettings,
   UserProfile,
   confirmAccountDeletion,
   getExecutionStatus,
   getProfile,
+  getSystemSettings,
   requestAccountDeletion,
   resendVerification,
+  updateSystemSettings,
   verifyEmail
 } from "@/features/settings/api/settingsApi";
 import { PageHeader } from "@/shared/ui/PageHeader";
@@ -49,6 +52,10 @@ const MODE_OPTIONS: { value: ThemeModePreference; label: string; icon: ReactNode
 export function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [executionStatus, setExecutionStatus] = useState<ExecutionStatus | null>(null);
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
+  const [confidenceInput, setConfidenceInput] = useState("55");
+  const [rewardRiskInput, setRewardRiskInput] = useState("1.2");
+  const [savingSettings, setSavingSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [verifyCode, setVerifyCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -67,6 +74,10 @@ export function SettingsPage() {
       if (result.role === "admin") {
         const status = await getExecutionStatus();
         setExecutionStatus(status);
+        const settings = await getSystemSettings();
+        setSystemSettings(settings);
+        setConfidenceInput((settings.min_confidence_threshold * 100).toString());
+        setRewardRiskInput(settings.min_reward_risk_ratio.toString());
       }
     });
 
@@ -74,7 +85,8 @@ export function SettingsPage() {
     loadProfile()
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
-  }, [showToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleVerify = async () => {
     setVerifying(true);
@@ -99,6 +111,19 @@ export function SettingsPage() {
       showToast((err as Error).message, "error");
     } finally {
       setResending(false);
+    }
+  };
+
+  const handleSaveThresholds = async () => {
+    setSavingSettings(true);
+    try {
+      const updated = await updateSystemSettings(Number(confidenceInput) / 100, Number(rewardRiskInput));
+      setSystemSettings(updated);
+      showToast("Decision engine thresholds updated", "success");
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -271,6 +296,50 @@ export function SettingsPage() {
         </Card>
       )}
 
+      {systemSettings && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Decision Engine Thresholds
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Applies to every user's AI recommendations. A recommendation only surfaces as long/short when it
+              clears both of these bars — otherwise it's reported as no_trade.
+            </Typography>
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Minimum confidence (%)"
+                  value={confidenceInput}
+                  onChange={(e) => setConfidenceInput(e.target.value)}
+                  inputProps={{ min: 1, max: 99 }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Minimum reward-to-risk ratio"
+                  value={rewardRiskInput}
+                  onChange={(e) => setRewardRiskInput(e.target.value)}
+                  inputProps={{ min: 0.1, step: 0.1 }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Button variant="contained" onClick={handleSaveThresholds} disabled={savingSettings} fullWidth>
+                  {savingSettings ? <CircularProgress size={20} color="inherit" /> : "Save"}
+                </Button>
+              </Grid>
+            </Grid>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              Last updated {new Date(systemSettings.updated_at).toLocaleString()}
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
+
       {executionStatus && (
         <Card>
           <CardContent>
@@ -287,26 +356,26 @@ export function SettingsPage() {
                 variant="outlined"
               />
             </Box>
-            <Grid2 container spacing={2} sx={{ mt: 1 }}>
-              <Grid2 size={{ xs: 6, sm: 4 }}>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid size={{ xs: 6, sm: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   Max position size
                 </Typography>
                 <Typography variant="h6">{executionStatus.max_position_size}</Typography>
-              </Grid2>
-              <Grid2 size={{ xs: 6, sm: 4 }}>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   Max open positions
                 </Typography>
                 <Typography variant="h6">{executionStatus.max_open_positions}</Typography>
-              </Grid2>
-              <Grid2 size={{ xs: 6, sm: 4 }}>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   Max daily loss
                 </Typography>
                 <Typography variant="h6">{executionStatus.max_daily_loss_pct}%</Typography>
-              </Grid2>
-            </Grid2>
+              </Grid>
+            </Grid>
           </CardContent>
         </Card>
       )}

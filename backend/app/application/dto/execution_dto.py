@@ -10,6 +10,7 @@ class SubmitOrderRequest(BaseModel):
     stop_loss: float | None = None
     take_profit: float | None = None
     confirmation_phrase: str
+    portfolio_id: str | None = None
 
 
 class ExecutionResultResponse(BaseModel):

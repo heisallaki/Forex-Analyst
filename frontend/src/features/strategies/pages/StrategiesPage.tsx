@@ -18,7 +18,7 @@ export function StrategiesPage() {
       .then(setDbStrategies)
       .catch((err) => showToast((err as Error).message, "error"))
       .finally(() => setLoading(false));
-  }, [showToast]);
+  }, []);
 
   if (loading) {
     return <PageLoadingSkeleton variant="table" />;
@@ -44,10 +44,10 @@ export function StrategiesPage() {
             statusLabel = "Not implemented";
             color = "error";
           } else if (dbMatch?.is_active) {
-            statusLabel = "Active";
+            statusLabel = `Active (v${dbMatch.version})`;
             color = "success";
           } else if (preset.status === "partial") {
-            statusLabel = dbMatch ? "Active (partial)" : "Not yet tested (partial)";
+            statusLabel = dbMatch ? `Active (partial, v${dbMatch.version})` : "Not yet tested (partial)";
             color = dbMatch ? "success" : "warning";
           }
           return (

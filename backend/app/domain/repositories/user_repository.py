@@ -44,3 +44,15 @@ class UserRepository(ABC):
     @abstractmethod
     async def delete_user(self, user_id: UUID) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    async def list_all(self) -> list[User]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update_role(self, user_id: UUID, role: str, permissions: dict) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def set_active(self, user_id: UUID, is_active: bool) -> None:
+        raise NotImplementedError

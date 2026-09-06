@@ -25,6 +25,8 @@ class SignalModel(Base):
     direction: Mapped[str] = mapped_column(String(10), nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
     reasoning: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True

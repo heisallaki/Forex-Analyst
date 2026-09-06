@@ -1,7 +1,7 @@
 import statistics
 
 MIN_CONFIDENCE_THRESHOLD = 0.55
-MIN_REWARD_RISK_RATIO = 1.2
+DEFAULT_MIN_REWARD_RISK_RATIO = 1.2
 
 
 def _classify_risk(predicted_mae_atr: float) -> str:
@@ -76,12 +76,12 @@ def build_reasoning(
         else "an undetermined reward-to-risk ratio"
     )
     return (
-        f"The trend model identifies a {direction_word} bias with "
-        f"{combined_confidence:.0%} combined confidence across the trend, "
-        f"entry quality, and confidence scoring models, offering {rr_text} "
-        f"in the current {predicted_regime} regime. This meets the minimum "
-        f"confidence and reward-to-risk thresholds required to surface as a "
-        f"recommendation."
+            f"The trend model identifies a {direction_word} bias with "
+            f"{combined_confidence:.0%} combined confidence across the trend, "
+            f"entry quality, and confidence scoring models, offering {rr_text} "
+            f"in the current {predicted_regime} regime. This meets the "
+            "minimum confidence and reward-to-risk thresholds required to "
+            "surface as a recommendation."
     )
 
 
@@ -92,13 +92,13 @@ def build_alternative_scenarios(
     ranked = sorted(trend_probabilities.items(), key=lambda item: item[1], reverse=True)
     for label, probability in ranked[1:]:
         scenarios.append(
-            f"There is a {probability:.0%} model-estimated probability the market "
-            f"instead moves {label}."
+            f"There is a {probability:.0%} model-estimated probability "
+            f"the market instead moves {label}."
         )
     scenarios.append(
         f"If the market regime shifts away from {predicted_regime}, "
-        f"this setup's follow-through probability should be reassessed "
-        f"rather than assumed to hold."
+        "this setup's follow-through probability should be reassessed "
+        "rather than assumed to hold."
     )
     return scenarios
 
@@ -114,19 +114,24 @@ def build_invalidation_conditions(
         stop_price = entry_price - stop_distance
         return [
             f"Invalidated if price closes below {stop_price:.{pip_precision}f}.",
-            "Invalidated if the trend model's directional bias flips to "
-            "down or flat on the next evaluation.",
+            "Invalidated if the trend model's directional bias flips to down "
+            "or flat on the next evaluation.",
         ]
     stop_price = entry_price + stop_distance
     return [
         f"Invalidated if price closes above {stop_price:.{pip_precision}f}.",
-        "Invalidated if the trend model's directional bias flips to "
-        "up or flat on the next evaluation.",
+        "Invalidated if the trend model's directional bias flips to up "
+        "or flat on the next evaluation.",
     ]
 
 
 def build_recommendation(
-    symbol: str, interval: str, latest_row: dict, predictions: dict[str, dict]
+    symbol: str,
+    interval: str,
+    latest_row: dict,
+    predictions: dict[str, dict],
+    min_confidence_threshold: float = MIN_CONFIDENCE_THRESHOLD,
+    min_reward_risk_ratio: float = DEFAULT_MIN_REWARD_RISK_RATIO,
 ) -> dict:
     trend_output = predictions.get("trend_classifier", {})
     entry_quality_output = predictions.get("entry_quality", {})
@@ -161,7 +166,7 @@ def build_recommendation(
             "supporting_indicators": build_supporting_indicators(latest_row),
             "reasoning": (
                 f"No trade is recommended because the following models are not yet "
-                f"trained for {symbol}{interval}: {', '.join(missing)}. "
+                f"trained for {symbol} {interval}: {', '.join(missing)}. "
                 "Run POST /ai/train first."
             ),
             "alternative_scenarios": [],
@@ -194,15 +199,15 @@ def build_recommendation(
 
     if direction is None:
         rejection_reasons.append("the trend model shows no clear directional bias (flat)")
-    elif combined_confidence < MIN_CONFIDENCE_THRESHOLD:
+    elif combined_confidence < min_confidence_threshold:
         rejection_reasons.append(
             f"combined confidence ({combined_confidence:.0%}) is below the "
-            f"{MIN_CONFIDENCE_THRESHOLD:.0%} minimum"
+            f"{min_confidence_threshold:.0%} minimum"
         )
-    elif reward_risk_ratio is not None and reward_risk_ratio < MIN_REWARD_RISK_RATIO:
+    elif reward_risk_ratio is not None and reward_risk_ratio < min_reward_risk_ratio:
         rejection_reasons.append(
             f"the expected reward-to-risk ratio ({reward_risk_ratio:.2f}) is below the "
-            f"{MIN_REWARD_RISK_RATIO:.2f} minimum"
+            f"{min_reward_risk_ratio:.2f} minimum"
         )
     else:
         action = direction

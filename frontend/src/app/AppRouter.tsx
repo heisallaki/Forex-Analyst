@@ -40,6 +40,7 @@ const PaperTradingPage = lazy(() =>
 const AnalyticsPage = lazy(() =>
   import("@/features/analytics/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage }))
 );
+const UsersPage = lazy(() => import("@/features/users/pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() =>
   import("@/features/settings/pages/SettingsPage").then((m) => ({ default: m.SettingsPage }))
 );
@@ -66,6 +67,7 @@ export function AppRouter() {
             <Route path="/backtest" element={<BacktestPage />} />
             <Route path="/paper" element={<PaperTradingPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/users" element={<UsersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>

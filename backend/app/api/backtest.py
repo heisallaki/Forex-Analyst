@@ -42,7 +42,11 @@ async def strategies(
     strategy_list = await backtest_repository.list_strategies()
     return [
         StrategyListItem(
-            id=str(item.id), name=item.name, description=item.description, is_active=item.is_active
+            id=str(item.id),
+            name=item.name,
+            description=item.description,
+            version=item.version,
+            is_active=item.is_active,
         )
         for item in strategy_list
     ]

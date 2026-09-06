@@ -41,7 +41,29 @@ class PaperTradingRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def partial_close_trade(
+        self, trade_id: UUID, close_quantity: float, exit_price: float, closed_at: datetime
+    ) -> PaperTrade | None:
+        raise NotImplementedError
+
+    @abstractmethod
     async def evaluate_and_close_if_triggered(
         self, trade: PaperTrade, current_price: float
     ) -> PaperTrade | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def apply_trailing_stop(self, trade: PaperTrade, current_price: float) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_open_margin_used(self, portfolio_id: UUID) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_open_trade_count(self, portfolio_id: UUID) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_daily_pnl_pct(self, portfolio_id: UUID) -> float:
         raise NotImplementedError

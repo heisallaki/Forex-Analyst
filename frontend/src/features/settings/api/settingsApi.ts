@@ -18,6 +18,13 @@ export interface ExecutionStatus {
   broker_configured: boolean;
 }
 
+export interface SystemSettings {
+  min_confidence_threshold: number;
+  min_reward_risk_ratio: number;
+  updated_at: string;
+  updated_by: string | null;
+}
+
 export interface MessageResponse {
   message: string;
 }
@@ -28,6 +35,21 @@ export async function getProfile(): Promise<UserProfile> {
 
 export async function getExecutionStatus(): Promise<ExecutionStatus> {
   return httpGet<ExecutionStatus>("/execution/status");
+}
+
+export async function getSystemSettings(): Promise<SystemSettings> {
+  return httpGet<SystemSettings>("/admin/settings");
+}
+
+export async function updateSystemSettings(
+  minConfidenceThreshold: number,
+  minRewardRiskRatio: number
+): Promise<SystemSettings> {
+  return httpPost<SystemSettings>(
+    "/admin/settings",
+    { min_confidence_threshold: minConfidenceThreshold, min_reward_risk_ratio: minRewardRiskRatio },
+    "PATCH"
+  );
 }
 
 export async function verifyEmail(code: string): Promise<MessageResponse> {

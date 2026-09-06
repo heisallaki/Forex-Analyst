@@ -9,11 +9,15 @@ from app.application.dto.paper_trading_dto import (
     CloseTradeRequest,
     CreatePortfolioRequest,
     OpenTradeRequest,
+    PartialCloseTradeRequest,
     PortfolioPerformanceResponse,
     PortfolioResponse,
     TradeResponse,
 )
-from app.application.use_cases.close_paper_trade import close_paper_trade_use_case
+from app.application.use_cases.close_paper_trade import (
+    close_paper_trade_use_case,
+    partial_close_paper_trade_use_case,
+)
 from app.application.use_cases.create_portfolio import create_portfolio_use_case
 from app.application.use_cases.open_paper_trade import open_paper_trade_use_case
 from app.domain.entities.user import User
@@ -52,6 +56,7 @@ async def list_portfolios(
             base_currency=portfolio.base_currency,
             initial_balance=portfolio.initial_balance,
             current_balance=portfolio.current_balance,
+            leverage=portfolio.leverage,
             created_at=portfolio.created_at,
         )
         for portfolio in portfolios
@@ -70,6 +75,8 @@ async def portfolio_performance(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
     trades = await repository.list_trades(portfolio_id, status=None)
     stats = compute_portfolio_performance(portfolio, trades)
+    margin_in_use = await repository.get_open_margin_used(portfolio_id)
+    stats["available_margin"] = portfolio.current_balance - margin_in_use
     return PortfolioPerformanceResponse(**stats)
 
 
@@ -109,6 +116,24 @@ async def close_trade(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
 
+@router.post("/trades/{trade_id}/partial-close", response_model=TradeResponse)
+async def partial_close_trade(
+    trade_id: UUID,
+    payload: PartialCloseTradeRequest,
+    current_user: Annotated[User, Depends(require_permission("manage_strategies"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> TradeResponse:
+    repository = SqlAlchemyPaperTradingRepository(session)
+    market_repository = SqlAlchemyMarketRepository(session)
+    client = TwelveDataClient()
+    try:
+        return await partial_close_paper_trade_use_case(
+            trade_id, payload, repository, market_repository, client
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
+
+
 @router.get("/trades", response_model=list[TradeResponse])
 async def list_trades(
     portfolio_id: UUID,
@@ -133,6 +158,9 @@ async def list_trades(
             quantity=trade.quantity,
             stop_loss=trade.stop_loss,
             take_profit=trade.take_profit,
+            trailing_stop_distance=trade.trailing_stop_distance,
+            margin_used=trade.margin_used,
+            realized_pnl=trade.realized_pnl,
             status=trade.status,
             pnl=trade.pnl,
             opened_at=trade.opened_at,

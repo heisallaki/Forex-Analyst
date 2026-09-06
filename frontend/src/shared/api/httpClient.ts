@@ -63,9 +63,9 @@ export async function httpGet<T>(path: string): Promise<T> {
   return request<T>(path, { method: "GET" });
 }
 
-export async function httpPost<T>(path: string, body: unknown): Promise<T> {
+export async function httpPost<T>(path: string, body: unknown, method: "POST" | "PATCH" = "POST"): Promise<T> {
   return request<T>(path, {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });

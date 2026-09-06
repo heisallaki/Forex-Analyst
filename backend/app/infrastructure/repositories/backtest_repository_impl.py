@@ -23,6 +23,19 @@ def _signal_to_entity(model: SignalModel) -> Signal:
         created_at=model.created_at,
         user_id=model.user_id,
         hidden_at=model.hidden_at,
+        outcome=model.outcome,
+        evaluated_at=model.evaluated_at,
+    )
+
+
+def _strategy_to_entity(model: StrategyModel) -> Strategy:
+    return Strategy(
+        id=model.id,
+        name=model.name,
+        description=model.description,
+        parameters=model.parameters,
+        version=model.version,
+        is_active=model.is_active,
     )
 
 
@@ -37,18 +50,20 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         model = result.scalar_one_or_none()
         if model is None:
             model = StrategyModel(
-                name=name, description=description, parameters=parameters, is_active=False
+                name=name,
+                description=description,
+                parameters=parameters,
+                version=1,
+                is_active=False,
             )
             self.session.add(model)
-            await self.session.commit()
-            await self.session.refresh(model)
-        return Strategy(
-            id=model.id,
-            name=model.name,
-            description=model.description,
-            parameters=model.parameters,
-            is_active=model.is_active,
-        )
+        else:
+            model.description = description
+            model.parameters = parameters
+            model.version += 1
+        await self.session.commit()
+        await self.session.refresh(model)
+        return _strategy_to_entity(model)
 
     async def save_signal(self, signal: Signal) -> Signal:
         model = SignalModel(
@@ -157,16 +172,7 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         result = await self.session.execute(
             select(StrategyModel).order_by(StrategyModel.created_at.desc())
         )
-        return [
-            Strategy(
-                id=model.id,
-                name=model.name,
-                description=model.description,
-                parameters=model.parameters,
-                is_active=model.is_active,
-            )
-            for model in result.scalars().all()
-        ]
+        return [_strategy_to_entity(model) for model in result.scalars().all()]
 
     async def activate_strategy(self, strategy_id: UUID) -> None:
         result = await self.session.execute(
@@ -176,3 +182,64 @@ class SqlAlchemyBacktestRepository(BacktestRepository):
         if model is not None and not model.is_active:
             model.is_active = True
             await self.session.commit()
+
+    async def list_signals_for_evaluation(self, limit: int) -> list[Signal]:
+        query = (
+            select(SignalModel)
+            .where(
+                SignalModel.direction.in_(["long", "short"]),
+                SignalModel.outcome.is_(None),
+                SignalModel.reasoning["source"].astext == "decision_engine",
+            )
+            .order_by(SignalModel.created_at.asc())
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        return [_signal_to_entity(model) for model in result.scalars().all()]
+
+    async def record_signal_outcome(self, signal_id: UUID, outcome: str) -> None:
+        result = await self.session.execute(select(SignalModel).where(SignalModel.id == signal_id))
+        model = result.scalar_one_or_none()
+        if model is not None:
+            model.outcome = outcome
+            model.evaluated_at = datetime.now(UTC)
+            await self.session.commit()
+
+    async def get_accuracy_stats(self) -> dict:
+        result = await self.session.execute(
+            select(SignalModel).where(SignalModel.outcome.isnot(None))
+        )
+        evaluated = result.scalars().all()
+
+        wins = sum(1 for signal in evaluated if signal.outcome == "win")
+        losses = sum(1 for signal in evaluated if signal.outcome == "loss")
+        flats = sum(1 for signal in evaluated if signal.outcome == "flat")
+        total = len(evaluated)
+
+        long_signals = [signal for signal in evaluated if signal.direction == "long"]
+        short_signals = [signal for signal in evaluated if signal.direction == "short"]
+        long_decided = [signal for signal in long_signals if signal.outcome in ("win", "loss")]
+        short_decided = [signal for signal in short_signals if signal.outcome in ("win", "loss")]
+        decided = wins + losses
+
+        return {
+            "total_evaluated": total,
+            "wins": wins,
+            "losses": losses,
+            "flats": flats,
+            "win_rate": (wins / decided * 100) if decided > 0 else None,
+            "long_win_rate": (
+                sum(1 for signal in long_decided if signal.outcome == "win")
+                / len(long_decided)
+                * 100
+                if long_decided
+                else None
+            ),
+            "short_win_rate": (
+                sum(1 for signal in short_decided if signal.outcome == "win")
+                / len(short_decided)
+                * 100
+                if short_decided
+                else None
+            ),
+        }

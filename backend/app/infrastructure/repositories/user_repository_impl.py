@@ -111,3 +111,25 @@ class SqlAlchemyUserRepository(UserRepository):
         if model is not None:
             await self.session.delete(model)
             await self.session.commit()
+
+    async def list_all(self) -> list[User]:
+        result = await self.session.execute(select(UserModel).order_by(UserModel.created_at.asc()))
+        models = result.scalars().all()
+        return [_to_entity(model) for model in models]
+
+    async def update_role(self, user_id: UUID, role: str, permissions: dict) -> None:
+        await self.session.execute(
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(
+                role=role,
+                permissions=permissions,
+            )
+        )
+        await self.session.commit()
+
+    async def set_active(self, user_id: UUID, is_active: bool) -> None:
+        await self.session.execute(
+            update(UserModel).where(UserModel.id == user_id).values(is_active=is_active)
+        )
+        await self.session.commit()

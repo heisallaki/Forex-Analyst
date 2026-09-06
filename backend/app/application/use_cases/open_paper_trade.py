@@ -6,7 +6,7 @@ from app.application.use_cases.get_historical_candles import get_historical_cand
 from app.domain.entities.paper_trading import PaperTrade
 from app.domain.repositories.market_repository import MarketRepository
 from app.domain.repositories.paper_trading_repository import PaperTradingRepository
-from app.domain.services.trading_math import size_quantity_for_risk
+from app.domain.services.trading_math import is_usd_base_pair, size_quantity_for_risk
 from app.infrastructure.market_data.price_cache import get_latest_price
 from app.infrastructure.market_data.twelve_data_client import TwelveDataClient
 
@@ -21,6 +21,13 @@ async def _resolve_entry_price(
     if not candles:
         raise ValueError(f"No price data available for {symbol}")
     return candles[-1].close
+
+
+def _compute_required_margin(
+    symbol: str, quantity: float, entry_price: float, leverage: float
+) -> float:
+    notional = quantity if is_usd_base_pair(symbol) else quantity * entry_price
+    return notional / leverage
 
 
 async def open_paper_trade_use_case(
@@ -49,6 +56,17 @@ async def open_paper_trade_use_case(
             payload.symbol, payload.risk_amount, stop_distance, entry_price
         )
 
+    required_margin = _compute_required_margin(
+        payload.symbol, quantity, entry_price, portfolio.leverage
+    )
+    margin_in_use = await repository.get_open_margin_used(portfolio.id)
+    available_margin = portfolio.current_balance - margin_in_use
+    if required_margin > available_margin:
+        raise ValueError(
+            f"Insufficient margin: this trade requires {required_margin:.2f} but only "
+            f"{available_margin:.2f} is available at {portfolio.leverage:.0f}x leverage"
+        )
+
     trade = PaperTrade(
         id=uuid4(),
         portfolio_id=portfolio.id,
@@ -60,6 +78,9 @@ async def open_paper_trade_use_case(
         quantity=quantity,
         stop_loss=payload.stop_loss,
         take_profit=payload.take_profit,
+        trailing_stop_distance=payload.trailing_stop_distance,
+        margin_used=required_margin,
+        realized_pnl=0.0,
         status="open",
         pnl=None,
         opened_at=datetime.now(UTC),
@@ -77,6 +98,9 @@ async def open_paper_trade_use_case(
         quantity=opened.quantity,
         stop_loss=opened.stop_loss,
         take_profit=opened.take_profit,
+        trailing_stop_distance=opened.trailing_stop_distance,
+        margin_used=opened.margin_used,
+        realized_pnl=opened.realized_pnl,
         status=opened.status,
         pnl=opened.pnl,
         opened_at=opened.opened_at,
