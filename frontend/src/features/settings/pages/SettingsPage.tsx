@@ -39,7 +39,7 @@ import { PageHeader } from "@/shared/ui/PageHeader";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { ACCENT_COLOR_OPTIONS } from "@/app/theme.ts";
-import { ThemeModePreference, useThemeStore } from "@/app/themeStore/themeStore";
+import { ThemeModePreference, useThemeStore } from "@/app/theme/themeStore";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { useToast } from "@/shared/ui/useToast";
 

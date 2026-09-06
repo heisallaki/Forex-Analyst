@@ -1,47 +1,52 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 import type { ReactElement } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "@/app/routes/ProtectedRoute";
 import { AppLayout } from "@/app/layout/AppLayout";
 import { PageLoadingSkeleton } from "@/shared/ui/PageLoadingSkeleton";
 import { NotFoundPage } from "@/features/notfound/pages/NotFoundPage";
+import { lazyWithRetry } from "@/shared/utils/lazyWithRetry";
 
-const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage").then((m) => ({ default: m.LoginPage })));
-const RegisterPage = lazy(() =>
+const LoginPage = lazyWithRetry(() =>
+  import("@/features/auth/pages/LoginPage").then((m) => ({ default: m.LoginPage }))
+);
+const RegisterPage = lazyWithRetry(() =>
   import("@/features/auth/pages/RegisterPage").then((m) => ({ default: m.RegisterPage }))
 );
-const ForgotPasswordPage = lazy(() =>
+const ForgotPasswordPage = lazyWithRetry(() =>
   import("@/features/auth/pages/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage }))
 );
-const DashboardPage = lazy(() =>
+const DashboardPage = lazyWithRetry(() =>
   import("@/features/dashboard/pages/DashboardPage").then((m) => ({ default: m.DashboardPage }))
 );
-const MarketsPage = lazy(() =>
+const MarketsPage = lazyWithRetry(() =>
   import("@/features/market/pages/MarketsPage").then((m) => ({ default: m.MarketsPage }))
 );
-const ChartsPage = lazy(() =>
+const ChartsPage = lazyWithRetry(() =>
   import("@/features/charts/pages/ChartsPage").then((m) => ({ default: m.ChartsPage }))
 );
-const AIAnalysisPage = lazy(() =>
+const AIAnalysisPage = lazyWithRetry(() =>
   import("@/features/ai/pages/AIAnalysisPage").then((m) => ({ default: m.AIAnalysisPage }))
 );
-const SignalsPage = lazy(() =>
+const SignalsPage = lazyWithRetry(() =>
   import("@/features/signals/pages/SignalsPage").then((m) => ({ default: m.SignalsPage }))
 );
-const StrategiesPage = lazy(() =>
+const StrategiesPage = lazyWithRetry(() =>
   import("@/features/strategies/pages/StrategiesPage").then((m) => ({ default: m.StrategiesPage }))
 );
-const BacktestPage = lazy(() =>
+const BacktestPage = lazyWithRetry(() =>
   import("@/features/backtest/pages/BacktestPage").then((m) => ({ default: m.BacktestPage }))
 );
-const PaperTradingPage = lazy(() =>
+const PaperTradingPage = lazyWithRetry(() =>
   import("@/features/paper/pages/PaperTradingPage").then((m) => ({ default: m.PaperTradingPage }))
 );
-const AnalyticsPage = lazy(() =>
+const AnalyticsPage = lazyWithRetry(() =>
   import("@/features/analytics/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage }))
 );
-const UsersPage = lazy(() => import("@/features/users/pages/UsersPage").then((m) => ({ default: m.UsersPage })));
-const SettingsPage = lazy(() =>
+const UsersPage = lazyWithRetry(() =>
+  import("@/features/users/pages/UsersPage").then((m) => ({ default: m.UsersPage }))
+);
+const SettingsPage = lazyWithRetry(() =>
   import("@/features/settings/pages/SettingsPage").then((m) => ({ default: m.SettingsPage }))
 );
 

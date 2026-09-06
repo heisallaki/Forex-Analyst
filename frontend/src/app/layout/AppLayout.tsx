@@ -26,7 +26,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { logout as logoutRequest } from "@/features/auth/api/authApi";
-import { useThemeStore } from "@/app/themeStore/themeStore";
+import { useThemeStore } from "@/app/theme/themeStore";
 const DRAWER_WIDTH = 240;
 
 const NAV_ITEMS = [

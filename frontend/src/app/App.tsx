@@ -1,8 +1,9 @@
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { createAppTheme } from "@/app/theme.ts";
-import { useThemeStore } from "@/app/themeStore/themeStore";
+import { createAppTheme } from "@/app/theme";
+import { useThemeStore } from "@/app/theme/themeStore";
 import { AppRouter } from "@/app/AppRouter";
 import { ToastProvider } from "@/shared/ui/ToastProvider";
+import { ErrorBoundary } from "@/app/ErrorBoundary";
 
 export default function App() {
   const effectiveMode = useThemeStore((state) => state.effectiveMode());
@@ -12,9 +13,11 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <ToastProvider>
-        <AppRouter />
-      </ToastProvider>
+      <ErrorBoundary>
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }
