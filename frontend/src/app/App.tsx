@@ -1,6 +1,6 @@
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { createAppTheme } from "@/app/theme";
-import { useThemeStore } from "@/app/theme/themeStore";
+import { createAppTheme } from "@/app/theme.ts";
+import { useThemeStore } from "@/app/themeStore/themeStore";
 import { AppRouter } from "@/app/AppRouter";
 import { ToastProvider } from "@/shared/ui/ToastProvider";
 
