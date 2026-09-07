@@ -1,6 +1,13 @@
 export type PasswordStrengthLabel = "weak" | "medium" | "strong";
 export type PasswordStrengthColor = "error" | "warning" | "success";
 
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void) => void;
+declare const expect: (value: unknown) => {
+  toBe: (expected: unknown) => void;
+  toBeGreaterThan: (expected: number) => void;
+};
+
 export interface PasswordStrengthResult {
   score: number;
   label: PasswordStrengthLabel;
@@ -36,8 +43,6 @@ if (score >= 70) {
 
 return { score: Math.min(score, 100), label, color };
 }
-
-import { describe, it, expect } from "vitest";
 
 describe("evaluatePasswordStrength", () => {
   it("rates a short simple password as weak", () => {

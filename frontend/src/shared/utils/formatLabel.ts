@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void) => void;
+declare const expect: (actual: unknown) => {
+  toBe(expected: unknown): void;
+};
 
 export function humanizeSnakeCase(value: string): string {
   if (!value) return "";
