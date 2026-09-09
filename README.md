@@ -2,8 +2,6 @@
 
 # FX Analyst
 
-An AI-powered forex and gold market analyst, live at **[forex-analyst.vercel.app](https://forex-analyst.vercel.app/)**.
-
 This isn't a signal-selling bot and it doesn't place trades for you. It watches live currency and gold prices, runs them through a technical feature-engineering pipeline and six locally-trained machine learning models, and produces recommendations you can actually interrogate — trend, confidence, risk, expected reward, the indicators behind the call, and the exact conditions that would invalidate it. If the evidence isn't strong enough, it says so and recommends no trade, instead of forcing a call just because you asked for one.
 
 ## What it actually does
