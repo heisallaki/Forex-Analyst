@@ -28,6 +28,7 @@ from app.infrastructure.scheduler.signal_accuracy_scheduler import run_signal_ac
 
 configure_logging(settings.APP_DEBUG)
 logger = logging.getLogger(__name__)
+logger.info("Configured CORS_ORIGINS: %s", settings.CORS_ORIGINS)
 
 
 @asynccontextmanager

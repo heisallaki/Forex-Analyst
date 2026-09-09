@@ -1,13 +1,6 @@
 export type PasswordStrengthLabel = "weak" | "medium" | "strong";
 export type PasswordStrengthColor = "error" | "warning" | "success";
 
-declare const describe: (name: string, fn: () => void) => void;
-declare const it: (name: string, fn: () => void) => void;
-declare const expect: (value: unknown) => {
-  toBe: (expected: unknown) => void;
-  toBeGreaterThan: (expected: number) => void;
-};
-
 export interface PasswordStrengthResult {
   score: number;
   label: PasswordStrengthLabel;
@@ -31,31 +24,15 @@ export function evaluatePasswordStrength(password: string): PasswordStrengthResu
   score += checks.filter((pattern) => pattern.test(normalizedPassword)).length * 15;
 
   let label: PasswordStrengthLabel = "weak";
-let color: PasswordStrengthColor = "error";
+  let color: PasswordStrengthColor = "error";
 
-if (score >= 70) {
-  label = "strong";
-  color = "success";
-} else if (score >= 40) {
-  label = "medium";
-  color = "warning";
+  if (score >= 70) {
+    label = "strong";
+    color = "success";
+  } else if (score >= 40) {
+    label = "medium";
+    color = "warning";
+  }
+
+  return { score: Math.min(score, 100), label, color };
 }
-
-return { score: Math.min(score, 100), label, color };
-}
-
-describe("evaluatePasswordStrength", () => {
-  it("rates a short simple password as weak", () => {
-    expect(evaluatePasswordStrength("abc").label).toBe("weak");
-  });
-
-  it("rates a long mixed-case password with numbers and symbols as strong", () => {
-    expect(evaluatePasswordStrength("Str0ng!Passw0rd").label).toBe("strong");
-  });
-
-  it("score increases as complexity increases", () => {
-    const weak = evaluatePasswordStrength("abc").score;
-    const strong = evaluatePasswordStrength("Str0ng!Passw0rd123").score;
-    expect(strong).toBeGreaterThan(weak);
-  });
-});
