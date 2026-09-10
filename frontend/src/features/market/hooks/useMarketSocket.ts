@@ -21,7 +21,8 @@ export function useMarketSocket() {
       return;
     }
 
-    const socket = new WebSocket(`${import.meta.env.VITE_WS_URL ?? "ws://localhost:8080"}/market?token=${accessToken}`);
+    const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? "ws://localhost:8000/api/v1";
+    const socket = new WebSocket(`${wsBaseUrl}/market/ws/prices?token=${accessToken}`);
     socketRef.current = socket;
     setStatus("connecting");
 
@@ -48,8 +49,12 @@ export function useMarketSocket() {
     };
 
     return () => {
-      socket.close();
       socketRef.current = null;
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      } else {
+        socket.onopen = () => socket.close();
+      }
     };
   }, [accessToken]);
 

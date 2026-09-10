@@ -50,44 +50,44 @@ async def lifespan(app: FastAPI):
             pass
 
 
-app = FastAPI(title=settings.APP_NAME, debug=settings.APP_DEBUG, lifespan=lifespan)
+fastapi_app = FastAPI(title=settings.APP_NAME, debug=settings.APP_DEBUG, lifespan=lifespan)
 
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+fastapi_app.state.limiter = limiter
+fastapi_app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
-@app.exception_handler(Exception)
+@fastapi_app.middleware("http")
+async def default_rate_limit_state(request: Request, call_next):
+    request.state.view_rate_limit = None
+    return await call_next(request)
+
+
+@fastapi_app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.error(
         "Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True
     )
 
-    origin = request.headers.get("origin")
-    headers = {}
-    if origin and origin in settings.CORS_ORIGINS:
-        headers["Access-Control-Allow-Origin"] = origin
-        headers["Access-Control-Allow-Credentials"] = "true"
-
     detail = str(exc) if settings.APP_DEBUG else "Internal server error"
-    return JSONResponse(status_code=500, content={"detail": detail}, headers=headers)
+    return JSONResponse(status_code=500, content={"detail": detail})
 
 
-app.include_router(health_router, prefix=settings.API_PREFIX)
-app.include_router(auth_router, prefix=settings.API_PREFIX)
-app.include_router(market_router, prefix=settings.API_PREFIX)
-app.include_router(features_router, prefix=settings.API_PREFIX)
-app.include_router(backtest_router, prefix=settings.API_PREFIX)
-app.include_router(ai_router, prefix=settings.API_PREFIX)
-app.include_router(decision_router, prefix=settings.API_PREFIX)
-app.include_router(paper_trading_router, prefix=settings.API_PREFIX)
-app.include_router(execution_router, prefix=settings.API_PREFIX)
-app.include_router(users_router, prefix=settings.API_PREFIX)
-app.include_router(admin_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(health_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(auth_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(market_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(features_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(backtest_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(ai_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(decision_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(paper_trading_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(execution_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(users_router, prefix=settings.API_PREFIX)
+fastapi_app.include_router(admin_router, prefix=settings.API_PREFIX)
+
+app = CORSMiddleware(
+    fastapi_app,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
