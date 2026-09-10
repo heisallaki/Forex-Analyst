@@ -39,7 +39,7 @@ from app.infrastructure.database.models import (  # noqa: F401
     user_model,
     verification_code_model,
 )
-from app.main import app
+from app.main import app, fastapi_app
 
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 test_engine = create_async_engine(TEST_DATABASE_URL)
@@ -87,15 +87,15 @@ async def client():
         async with TestSessionLocal() as session:
             yield session
 
-    app.dependency_overrides[get_db_session] = override_get_db_session
-    app.state.limiter.enabled = False
+    fastapi_app.dependency_overrides[get_db_session] = override_get_db_session
+    fastapi_app.state.limiter.enabled = False
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as async_client:
         yield async_client
 
-    app.state.limiter.enabled = True
-    app.dependency_overrides.clear()
+    fastapi_app.state.limiter.enabled = True
+    fastapi_app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
@@ -104,11 +104,11 @@ async def rate_limited_client():
         async with TestSessionLocal() as session:
             yield session
 
-    app.dependency_overrides[get_db_session] = override_get_db_session
-    app.state.limiter.enabled = True
+    fastapi_app.dependency_overrides[get_db_session] = override_get_db_session
+    fastapi_app.state.limiter.enabled = True
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as async_client:
         yield async_client
 
-    app.dependency_overrides.clear()
+    fastapi_app.dependency_overrides.clear()
